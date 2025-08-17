@@ -3,7 +3,7 @@ import { Routes, Route, useNavigate } from "react-router-dom";
 // import "./App.css"
 import Root from "./routes/Root.tsx";
 import Index from "./routes/Index.tsx";
-import Gallery from "./componets/Gallery.tsx"; 
+
 
 function App() {
   const navigate = useNavigate();

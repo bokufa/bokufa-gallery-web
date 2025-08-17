@@ -7,16 +7,8 @@ import axios from "axios";
 import PhotoModal from "./photo_modal.tsx";
 import { useNavigate } from "react-router-dom";
 
-function fetchMorePhotos(currentLength: number, count = 3) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const nextPhotos = allPhotos.slice(currentLength, currentLength + count);
-      resolve(nextPhotos);
-    }, 500); // 模拟延迟
-  });
-}
 
-const PhotoCard = ({ data, photo_width }: { data: Photo, photo_width: number}) => {
+const PhotoCard = ({ data }: { data: Photo}) => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const openPhotoModel = useMemo(() => () => {
     history.pushState({}, '', `/photo/${data.id}`)
@@ -72,7 +64,6 @@ export default function PhotoMasonry(props: { prefectureId?: string, cityId?: st
   // 初始只显示 4 张
   // const [photos, setPhotos] = useState(allPhotos.slice(0, 4));
   const [photos, setPhotos] = useState<Photo[]>([])
-  const loadedRanges = useRef<{ startIndex: number; stopIndex: number }[]>([]);
   const loadedIndex = useRef<{ startIndex: number, stopIndex: number }[]>([]);
 
   const containerRef = useRef(null);
@@ -89,18 +80,6 @@ export default function PhotoMasonry(props: { prefectureId?: string, cityId?: st
 
   const { scrollTop, isScrolling } = useScroller(offset);
 
-  // const maybeLoadMore = useInfiniteLoader(
-  //   async (startIndex, stopIndex, items) => {
-  //     if (loadedRanges.current.find(r => r.startIndex === startIndex && r.stopIndex === stopIndex)) return;
-  //     loadedRanges.current.push({ startIndex, stopIndex });
-
-  //     const newPhotos = await fetchMorePhotos(items.length, stopIndex - startIndex);
-  //     if ((newPhotos as any[]).length > 0) {
-  //       setPhotos(prev => [...prev, ...(newPhotos as any[])]);
-  //     }
-  //   },
-  //   { isItemLoaded: (index, items) => !!items[index] }
-  // );
   const query = useMemo(() => ({
     prefecture_id: props.prefectureId && props.prefectureId !== '0' ? props.prefectureId : undefined,
     city_id: props.cityId && props.cityId !== '0' ? props.cityId : undefined,
@@ -148,7 +127,7 @@ export default function PhotoMasonry(props: { prefectureId?: string, cityId?: st
     overscanBy: 3,
     itemHeightEstimate: 0,
     onRender: maybeLoadMore,
-    render: (props) => <PhotoCard {...props} photo_width={ columnWidth } />,
+    render: (props) => <PhotoCard {...props}/>,
     itemKey: (item) => item.id,
   });
 }
