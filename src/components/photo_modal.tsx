@@ -1,14 +1,13 @@
-import { Photo, Response } from "./models/gallery.ts";
+import { Photo } from "../models/gallery.ts";
 import {
   Image,
   Modal,
   ModalContent,
   ModalHeader,
-  ModalBody, Link, Spacer, Card, CardFooter, CardHeader, CardBody, Divider, Button, Skeleton
+  ModalBody, Link, Spacer, Card, CardFooter, CardHeader, CardBody, Divider, Skeleton
 } from "@heroui/react";
 import { IoCalendarOutline, IoLocationOutline } from "react-icons/io5";
 import moment from "moment";
-import { MdOutlineOpenInNew } from "react-icons/md";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 

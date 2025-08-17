@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { usePositioner, useContainerPosition, useMasonry, useScroller, useInfiniteLoader } from "masonic";
 import { useWindowSize } from "@react-hook/window-size";
 import { Card, Image, CardFooter, CardBody, useDisclosure } from "@heroui/react";
-import { Photo, Response } from "./models/gallery.ts";
+import { Photo, Response } from "../models/gallery.ts";
 import axios from "axios";
 import PhotoModal from "./photo_modal.tsx";
 import { useNavigate } from "react-router-dom";
@@ -71,7 +71,7 @@ export default function PhotoMasonry(props: { prefectureId?: string, cityId?: st
   const { offset, width } = useContainerPosition(containerRef, [windowWidth, height]);
   const columnCount = 3
   const columnGutter = 8; 
-  const columnWidth = Math.floor((width - columnGutter * (columnCount - 1)) / columnCount);
+  // const columnWidth = Math.floor((width - columnGutter * (columnCount - 1)) / columnCount);
   const positioner = usePositioner({
     width,
     columnGutter,
@@ -128,6 +128,6 @@ export default function PhotoMasonry(props: { prefectureId?: string, cityId?: st
     itemHeightEstimate: 0,
     onRender: maybeLoadMore,
     render: (props) => <PhotoCard {...props}/>,
-    itemKey: (item) => item.id,
+    itemKey: (item: Photo) => item.id,
   });
 }
