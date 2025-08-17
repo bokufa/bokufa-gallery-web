@@ -32,3 +32,4 @@ bun.lockb
 
 server/*
 public/img/*
+tools/*

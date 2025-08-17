@@ -85,7 +85,7 @@ export default function PhotoMasonry(props: { prefectureId?: string, cityId?: st
     city_id: props.cityId && props.cityId !== '0' ? props.cityId : undefined,
   }), [props.cityId, props.prefectureId])
   useEffect(() => {
-    axios.get<Response<Photo[]>>('http://localhost:3000/photos/all', {
+    axios.get<Response<Photo[]>>('https://bokufa-gallery-backend.vercel.app/api/photos/all', {
       params: {
         ...query,
         page_size: 20
@@ -102,7 +102,7 @@ export default function PhotoMasonry(props: { prefectureId?: string, cityId?: st
     loadedIndex.current.push({ startIndex, stopIndex })
 
     const lastDate = (items[items.length - 1] as Photo).metadata.datetime
-    axios.get<Response<Photo[]>>('http://localhost:3000/photos/all', {
+    axios.get<Response<Photo[]>>('https://bokufa-gallery-backend.vercel.app/api/photos/all', {
       params: {
         ...query,
         page_size: stopIndex - startIndex,

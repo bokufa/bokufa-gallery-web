@@ -43,7 +43,8 @@
     "react-router-dom": "^6.23.0",
     "sharp": "^0.34.3",
     "tailwind-variants": "2.0.1",
-    "tailwindcss": "4.1.11"
+    "tailwindcss": "4.1.11",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/compat": "1.2.8",
