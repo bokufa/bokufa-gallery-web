@@ -25,7 +25,7 @@ export default function PhotoModal(props: PhotoModalProps) {
     if (props.isOpen) {
         setLoading(true)
         setTimeout(() => {
-          axios.get<Photo>(`http://localhost:3000/photos/${props.photo.id}`)
+          axios.get< {payload: Photo} >(`http://localhost:3000/photos/${props.photo.id}`)
             .then(res => {
               setPhoto(res.data.payload)
               setLoading(false)
