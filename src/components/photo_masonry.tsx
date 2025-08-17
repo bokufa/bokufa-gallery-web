@@ -2,25 +2,11 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { usePositioner, useContainerPosition, useMasonry, useScroller, useInfiniteLoader } from "masonic";
 import { useWindowSize } from "@react-hook/window-size";
 import { Card, Image, CardFooter, CardBody, useDisclosure } from "@heroui/react";
-import { Photo, Response } from "../models/gallery.ts";
+import { Photo, Response } from "./models/gallery.ts";
 import axios from "axios";
 import PhotoModal from "./photo_modal.tsx";
+import { useNavigate } from "react-router-dom";
 
-// 全部照片数据（固定的，不会无限生成）
-const allPhotos = [
-  { id: 1, url: "/img/DSC01507.JPG", title: "风景1", height: 4672, width: 7008, metadata: {}, thumb_file: {url: '/img/DSC01507_thumbnail_512x341.jpg', height: 341, width: 512} },
-  { id: 2, url: "/img/higashifushimi.jpg", title: "风景2", height: 4320, width: 7680, metadata: {}, thumb_file: {url: '/img/higashifushimi_thumbnail_512x288.jpg', height: 288, width: 512} },
-  { id: 3, url: "/img/sunset.jpg", title: "风景3", height: 1920, width: 1280, metadata: {}, thumb_file: {url: '/img/sunset_thumbnail_341x512.jpg', height: 512, width: 341} },
-  { id: 4, url: "/img/DSC01507.JPG", title: "风景4", height: 4672, width: 7008, metadata: {}, thumb_file: {url: '/img/DSC01507_thumbnail_512x341.jpg', height: 341, width: 512} },
-  { id: 5, url: "/img/higashifushimi.jpg", title: "风景5", height: 4320, width: 7680, metadata: {}, thumb_file: {url: '/img/higashifushimi_thumbnail_512x288.jpg', height: 288, width: 512} },
-  { id: 6, url: "/img/sunset.jpg", title: "风景6", height: 1920, width: 1280, metadata: {}, thumb_file: {url: '/img/sunset_thumbnail_341x512.jpg', height: 512, width: 341} },
-  // { id: 7, url: "/img/DSC01507.JPG", title: "风景7" },
-  // { id: 8, url: "/img/higashifushimi.jpg", title: "风景8" },
-  // { id: 9, url: "/img/sunset.jpg", title: "风景9" },
-  // { id: 10, url: "/img/DSC01507.JPG", title: "风景10" },
-];
-
-// 模拟加载（从 allPhotos 中取）
 function fetchMorePhotos(currentLength: number, count = 3) {
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -36,7 +22,7 @@ const PhotoCard = ({ data, photo_width }: { data: Photo, photo_width: number}) =
     history.pushState({}, '', `/photo/${data.id}`)
     onOpen();
   }, [onOpen, data.id])
-
+  const navigate = useNavigate()
   return <Card
     radius="lg"
     className="border-none"

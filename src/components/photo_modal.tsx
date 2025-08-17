@@ -1,4 +1,4 @@
-import { Photo, Response } from "../models/gallery.ts";
+import { Photo, Response } from "./models/gallery.ts";
 import {
   Image,
   Modal,
