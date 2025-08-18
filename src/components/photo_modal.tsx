@@ -110,7 +110,19 @@ export default function PhotoModal(props: PhotoModalProps) {
                     {moment(photo.metadata.datetime).utcOffset(`+${photo.metadata.timezone.split('+')[1]}`).format('YYYY-MM-DD HH:mm ([GMT]Z)')}
                   </div>
                 </div>
+                
+                <dev className='flex items-center text-small text-default-500 gap-1.5'>
+                  {
+                    photo.metadata.title ?
+                      <div className="flex items-center">
+                        「{photo.metadata.title}」
+                      </div>
+                    :
+                    null
+                  }
+                </dev>                
               </div>
+
 
               <div className='gap-4 grid grid-cols-1 md:grid-cols-2'>
                 <Card className='overflow-visible'>
@@ -211,6 +223,17 @@ export default function PhotoModal(props: PhotoModalProps) {
                       :
                       null
                   }
+
+                  <dev className='flex items-center text-small text-default-500 gap-1.5'>
+                    {
+                      photo.metadata.title ?
+                        <div className="flex items-center">
+                          「{photo.metadata.title}」
+                        </div>
+                      :
+                      null
+                    }
+                  </dev>
 
                   <div className='flex items-center text-default-500 gap-1 text-small'>
                     <IoCalendarOutline size={20}/>
