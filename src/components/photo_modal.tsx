@@ -111,16 +111,16 @@ export default function PhotoModal(props: PhotoModalProps) {
                   </div>
                 </div>
                 
-                <dev className='flex items-center text-small text-default-500 gap-1.5'>
+                <div className='flex items-center text-small text-default-500 gap-1.5'>
                   {
-                    photo.metadata.title ?
+                    photo.title ?
                       <div className="flex items-center">
-                        「{photo.metadata.title}」
+                        「{photo.title}」
                       </div>
                     :
                     null
                   }
-                </dev>                
+                </div>                
               </div>
 
 
@@ -224,16 +224,16 @@ export default function PhotoModal(props: PhotoModalProps) {
                       null
                   }
 
-                  <dev className='flex items-center text-small text-default-500 gap-1.5'>
+                  <div className='flex items-center text-small text-default-500 gap-1.5'>
                     {
-                      photo.metadata.title ?
+                      photo.title ?
                         <div className="flex items-center">
-                          「{photo.metadata.title}」
+                          「{photo.title}」
                         </div>
                       :
                       null
                     }
-                  </dev>
+                  </div>
 
                   <div className='flex items-center text-default-500 gap-1 text-small'>
                     <IoCalendarOutline size={20}/>

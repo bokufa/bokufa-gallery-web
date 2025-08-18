@@ -20,7 +20,7 @@ export default function Root() {
       <main className="text-foreground scrollbar-hide">
         <Navbar onMenuOpenChange={setIsMenuOpen} isMenuOpen={isMenuOpen}>
           <NavbarBrand>
-            <Link className="font-bold text-inherit text-logo" href='/'>Bokufa's Gallery</Link>
+            <Link className="font-bold text-inherit text-logo" href='/'>Nihon Saien</Link>
           </NavbarBrand>
           <NavbarContent justify="end">
             <NavbarMenuToggle className="sm:hidden ml-2"/>
