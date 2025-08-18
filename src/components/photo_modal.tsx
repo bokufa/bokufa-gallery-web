@@ -109,20 +109,19 @@ export default function PhotoModal(props: PhotoModalProps) {
                   <div>
                     {moment(photo.metadata.datetime).utcOffset(`+${photo.metadata.timezone.split('+')[1]}`).format('YYYY-MM-DD HH:mm ([GMT]Z)')}
                   </div>
-                </div>
-                
-                <div className='flex items-center text-small text-default-500 gap-1.5'>
-                  {
-                    photo.title ?
-                      <div className="flex items-center">
-                        「{photo.title}」
-                      </div>
-                    :
-                    null
-                  }
-                </div>                
+                </div>              
               </div>
-
+              
+              <div className='flex items-center text-small text-default-500 gap-1.5'>
+                {
+                  photo.title ?
+                    <div className="flex items-center">
+                      「{photo.title}」
+                    </div>
+                  :
+                  null
+                }
+              </div>  
 
               <div className='gap-4 grid grid-cols-1 md:grid-cols-2'>
                 <Card className='overflow-visible'>

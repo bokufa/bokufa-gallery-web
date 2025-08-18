@@ -101,7 +101,7 @@ export default function PhotoMasonry(props: { prefectureId?: string, cityId?: st
     }
     loadedIndex.current.push({ startIndex, stopIndex })
 
-    const lastDate = (items[items.length - 1] as Photo).metadata.datetime
+    const lastDate = (items[0] as Photo).metadata.datetime
     axios.get<Response<Photo[]>>('https://api.bokufa.art/api/photos/all', {
       params: {
         ...query,
