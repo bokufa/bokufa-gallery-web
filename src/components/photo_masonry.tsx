@@ -6,7 +6,7 @@ import { Photo, Response } from "../models/gallery.ts";
 import axios from "axios";
 import PhotoModal from "./photo_modal.tsx";
 import { useNavigate } from "react-router-dom";
-
+import {useMediaQuery} from "../hooks/useMediaQuery.tsx";
 
 const PhotoCard = ({ data }: { data: Photo}) => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
@@ -15,13 +15,15 @@ const PhotoCard = ({ data }: { data: Photo}) => {
     onOpen();
   }, [onOpen, data.id])
   const navigate = useNavigate()
+  const isDesktop = useMediaQuery('(min-width: 960px)');
+
   return <Card
     radius="lg"
     className="border-none"
-    isPressable={true}
-    onPress={openPhotoModel}
+    isPressable={isDesktop}
+    onPress={isDesktop ? openPhotoModel : undefined}
   >
-    <CardBody className="overflow-visible p-0">
+    <CardBody className="overflow-visible p-0" onClick={isDesktop ? undefined : openPhotoModel}>
       <Image
         className="object-cover"
         draggable={false}
@@ -65,17 +67,17 @@ export default function PhotoMasonry(props: { prefectureId?: string, cityId?: st
   // const [photos, setPhotos] = useState(allPhotos.slice(0, 4));
   const [photos, setPhotos] = useState<Photo[]>([])
   const loadedIndex = useRef<{ startIndex: number, stopIndex: number }[]>([]);
-
+  const isDesktop = useMediaQuery('(min-width: 960px)');
   const containerRef = useRef(null);
   const [windowWidth, height] = useWindowSize();
   const { offset, width } = useContainerPosition(containerRef, [windowWidth, height]);
-  const columnCount = 3
-  const columnGutter = 8; 
+  // const columnCount = 3
+  // const columnGutter = 8; 
   // const columnWidth = Math.floor((width - columnGutter * (columnCount - 1)) / columnCount);
   const positioner = usePositioner({
     width,
-    columnGutter,
-    columnCount,
+    columnGutter: 8,
+    columnCount: isDesktop ? 3 : 2,
   });
 
   const { scrollTop, isScrolling } = useScroller(offset);

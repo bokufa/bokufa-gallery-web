@@ -18,6 +18,7 @@ export interface PhotoModalProps {
 }
 
 export default function PhotoModal(props: PhotoModalProps) {
+  const isDesktop = useMediaQuery('(min-width: 960px)');
   const [photo, setPhoto] = useState(props.photo)
   const [loading, setLoading] = useState(true)
 
@@ -54,7 +55,7 @@ export default function PhotoModal(props: PhotoModalProps) {
   const modal = useMemo(() => {
     return <ModalContent className='overflow-hidden'>
       {() => (
-         (!isPortrait) ?
+         (!isDesktop) || (!isPortrait) ?
           <>
             <ModalHeader className="p-0 flex flex-col gap-1">
               <Card
@@ -73,7 +74,7 @@ export default function PhotoModal(props: PhotoModalProps) {
                   src={photo.medium_file?.url}
                   width={photo.medium_file?.width}
                   height={photo.medium_file?.height}
-                  style={{ maxHeight: 'calc(100dvh - 20rem)' }}
+                  style={{ maxHeight: isDesktop ? 'calc(100dvh - 20rem)' : 'calc(100dvh - 18rem)', height: 'auto' }}
                 />
                 <CardFooter
                   className="justify-between before:bg-white/10 border-white/20 border-1 overflow-hidden py-1 absolute before:rounded-xl rounded-large bottom-1 shadow-small right-1 z-10 w-auto font-normal">
@@ -287,7 +288,7 @@ export default function PhotoModal(props: PhotoModalProps) {
           </>
       )}
     </ModalContent>
-  }, [cityLinks, isPortrait, loading, photo.author?.name, photo.medium_file?.height, photo.medium_file?.url, photo.medium_file?.width, photo.metadata.camera, photo.metadata.city, photo.metadata.datetime, photo.metadata.exposure_time_rat, photo.metadata.f_number, photo.metadata.focal_length, photo.metadata.has_location, photo.metadata.lens, photo.metadata.location, photo.metadata.photographic_sensitivity, photo.metadata.place, photo.metadata.timezone])
+  }, [cityLinks, isDesktop, isPortrait, loading, photo.author?.name, photo.medium_file?.height, photo.medium_file?.url, photo.medium_file?.width, photo.metadata.camera, photo.metadata.city, photo.metadata.datetime, photo.metadata.exposure_time_rat, photo.metadata.f_number, photo.metadata.focal_length, photo.metadata.has_location, photo.metadata.lens, photo.metadata.location, photo.metadata.photographic_sensitivity, photo.metadata.place, photo.metadata.timezone])
 
   return <Modal
     isOpen={props.isOpen}
