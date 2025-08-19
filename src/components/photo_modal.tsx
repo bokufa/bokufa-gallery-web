@@ -10,6 +10,7 @@ import { IoCalendarOutline, IoLocationOutline } from "react-icons/io5";
 import moment from "moment";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import useMediaQuery from "../hooks/useMediaQuery.tsx
 
 export interface PhotoModalProps {
   photo: Photo
