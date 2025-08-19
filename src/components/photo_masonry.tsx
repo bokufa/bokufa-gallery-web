@@ -6,7 +6,7 @@ import { Photo, Response } from "../models/gallery.ts";
 import axios from "axios";
 import PhotoModal from "./photo_modal.tsx";
 import { useNavigate } from "react-router-dom";
-import useMediaQuery from "../hooks/useMediaQuery.tsx
+import useMediaQuery from "../hooks/useMediaQuery.tsx"
 
 const PhotoCard = ({ data }: { data: Photo}) => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
