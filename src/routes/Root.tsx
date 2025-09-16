@@ -3,7 +3,9 @@ import {
 } from "@heroui/react";
 import { TbHome } from "react-icons/tb";
 import { Outlet, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { MapToken, MapTokenContext, MapType } from "../contexts/MapToken";
 // import gradLeft from '../assets/gradients/left.png';
 // import gradRight from '../assets/gradients/right.png';
 
@@ -13,10 +15,20 @@ const routes = [
 
 export default function Root() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [loading, setLoading] = useState(false)
+  const [token, setToken] = useState<MapToken>()
   const navigate = useNavigate();
 
+  useEffect(() => {
+      // mapbox
+      axios.get<Response<string>>('https://api.bokufa.art/api/mapbox/token').then((res) => {
+        setToken({ type: MapType.MapBox, token: res.data.token })
+      })
+  }, [])
+
+
   return (
-    <>
+    <MapTokenContext.Provider value={{ token, setToken }}>
       <main className="text-foreground scrollbar-hide">
         <Navbar onMenuOpenChange={setIsMenuOpen} isMenuOpen={isMenuOpen}>
           <NavbarBrand>
@@ -82,6 +94,6 @@ export default function Root() {
           </div>
         </div>
       </main>
-    </>
+    </MapTokenContext.Provider>
   );
 }

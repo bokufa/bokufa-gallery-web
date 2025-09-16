@@ -1,4 +1,4 @@
-import PhotoMasonry from "../components/photo_masonry.tsx";
+import PhotoMasonry from "../components/PhotoMasonry";
 
 
 export default function Index() {
