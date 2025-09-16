@@ -20,14 +20,14 @@ export default function PhotoMapCard({ photo, className }: { photo: Photo, class
     if (!mapContainerRef.current) return;
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current,
-      center: [photo.metadata.location.longitude, photo.metadata.location.latitude],
+      center: [photo.metadata.location?.longitude, photo.metadata.location?.latitude],
       zoom: 12,
       attributionControl: false,
       language: 'ja'
     });
     if (mapRef.current) {
       new mapboxgl.Marker({ color: "#ff0000" })
-        .setLngLat([photo.metadata.location.longitude, photo.metadata.location.latitude])
+        .setLngLat([photo.metadata.location?.longitude, photo.metadata.location?.latitude])
         .addTo(mapRef.current);
     }
 

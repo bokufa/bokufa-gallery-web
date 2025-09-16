@@ -6,13 +6,4 @@ import tailwindcss from "@tailwindcss/vite";
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), tsconfigPaths(), tailwindcss()],
-  server: {
-    proxy: {
-      '/api': {
-        target: 'https://api.bokufa.art',
-        changeOrigin: true,
-        rewrite: path => path.replace(/^\/api/, '/api'),
-      }
-    }
-  }
 });
