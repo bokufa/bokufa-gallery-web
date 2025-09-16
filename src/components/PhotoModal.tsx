@@ -25,8 +25,7 @@ export default function PhotoModal(props: PhotoModalProps) {
 		if (props.isOpen) {
 				setLoading(true)
 				setTimeout(() => {
-					// axios.get< {payload: Photo} >(`https://api.bokufa.art/api/photos/${props.photo.id}`)
-					axios.get< {payload: Photo} >(`/api/photos/${props.photo.id}`)
+					axios.get< {payload: Photo} >(`https://api.bokufa.art/api/photos/${props.photo.id}`)
 						.then(res => {
 							setPhoto(res.data.payload)
 							setLoading(false)
