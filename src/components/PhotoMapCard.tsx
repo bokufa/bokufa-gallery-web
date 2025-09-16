@@ -10,13 +10,14 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 
 
 export default function PhotoMapCard({ photo, className }: { photo: Photo, className: string}) {
-  const mapRef = useRef<mapboxgl.Map>;
-  const mapContainerRef = useRef<HTMLDivElement>;
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const token = useContext(MapTokenContext)
   
   useEffect(() => {
     if (!token?.token || !photo.metadata.location?.latitude || !photo.metadata.location?.longitude) return;
     mapboxgl.accessToken = token!.token.token;
+    if (!mapContainerRef.current) return;
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current,
       center: [photo.metadata.location.longitude, photo.metadata.location.latitude],
