@@ -10,8 +10,8 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 
 
 export default function PhotoMapCard({ photo, className }: { photo: Photo, className: string}) {
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<mapboxgl.Map>;
+  const mapContainerRef = useRef<HTMLDivElement>;
   const token = useContext(MapTokenContext)
   
   useEffect(() => {
