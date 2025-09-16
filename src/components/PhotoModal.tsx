@@ -59,7 +59,7 @@ export default function PhotoModal(props: PhotoModalProps) {
 					(!isDesktop || !isPortrait) ? (
 						<>
 							<ModalHeader className="p-0 flex flex-col gap-1">
-								<PhotoImageCard photo={photo} isDesktop={isDesktop} isPortrait={isPortrait} />
+								<PhotoImageCard photo={photo} isDesktop={isDesktop} />
 							</ModalHeader>
 							<ModalBody className="p-4">
 								<div className='flex flex-wrap items-center justify-between'>
@@ -68,9 +68,9 @@ export default function PhotoModal(props: PhotoModalProps) {
 								</div>
 								<PhotoTitle photo={photo} />
 								<div className='gap-4 grid grid-cols-1 md:grid-cols-2'>
-									<PhotoMetaCard photo={photo} loading={loading} />
+									<PhotoMetaCard photo={photo} />
                   {photo.metadata.location ? (
-                      <PhotoMapCard photo={photo} loading={loading} className={"overflow-hidden min-h-[109px] md:min-h-0"} /> 
+                      <PhotoMapCard photo={photo} className={"overflow-hidden min-h-[109px] md:min-h-0"} /> 
                       ): null
                   }
 								</div>
@@ -82,11 +82,11 @@ export default function PhotoModal(props: PhotoModalProps) {
 							<ModalBody className="p-0 overflow-hidden">
 								<div className='flex overflow-hidden'>
 									<div className='w-[54%]'>
-										<PhotoImageCard photo={photo} isDesktop={isDesktop} isPortrait={isPortrait} />
+										<PhotoImageCard photo={photo} isDesktop={isDesktop} />
 									</div>
 									<div className='w-[46%] p-6 flex flex-col gap-1 justify-end'>
                     {photo.metadata.location ? (
-                        <PhotoMapCard photo={photo} loading={loading} className={'overflow-hidden flex-1'} /> 
+                        <PhotoMapCard photo={photo} className={'overflow-hidden flex-1'} /> 
                         ): null
                       }
                     <Spacer y={4}/>
@@ -95,7 +95,7 @@ export default function PhotoModal(props: PhotoModalProps) {
 										<PhotoDateInfo photo={photo} />
 										<Spacer y={4}/>
 										<div className='gap-4 grid grid-cols-1'>
-											<PhotoMetaCard photo={photo} loading={loading} />
+											<PhotoMetaCard photo={photo}/>
 										</div>
 									</div>
 								</div>

@@ -11,7 +11,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 
 export default function PhotoMapCard({ photo, className }: { photo: Photo, className: string}) {
   const mapRef = useRef()
-  const mapContainerRef = useRef<HTMLDivElement>(null)
+  const mapContainerRef = useRef()
   const token = useContext(MapTokenContext)
   
   useEffect(() => {
@@ -31,7 +31,9 @@ export default function PhotoMapCard({ photo, className }: { photo: Photo, class
     }
 
     return () => {
-      mapRef.current.remove()
+      if (mapRef.current){
+        mapRef.current.remove()
+      }
     }
   }, [])
 
