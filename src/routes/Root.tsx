@@ -15,13 +15,12 @@ const routes = [
 
 export default function Root() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [loading, setLoading] = useState(false)
   const [token, setToken] = useState<MapToken>()
   const navigate = useNavigate();
 
   useEffect(() => {
       // mapbox
-      axios.get<Response<string>>('https://api.bokufa.art/api/mapbox/token').then((res) => {
+      axios.get<Response>('https://api.bokufa.art/api/mapbox/token').then((res) => {
         setToken({ type: MapType.MapBox, token: res.data.token })
       })
   }, [])

@@ -2,7 +2,7 @@ import { Card, CardFooter, Image } from "@heroui/react";
 import moment from "moment";
 import { Photo } from "../models/gallery";
 
-export default function PhotoImageCard({ photo, isDesktop, isPortrait }: { photo: Photo, isDesktop: boolean, isPortrait: boolean }) {
+export default function PhotoImageCard({ photo, isDesktop }: { photo: Photo, isDesktop: boolean}) {
   return (
     <Card isFooterBlurred radius="lg" className="border-none">
       <Image

@@ -1,5 +1,4 @@
-import { Card, CardHeader, CardBody, CardFooter, Divider, Skeleton, Button } from "@heroui/react";
-import { Link } from "@heroui/link";
+import { Card, CardFooter, Button } from "@heroui/react";
 import { Photo } from "../models/gallery";
 import { useRef, useEffect } from 'react'
 import mapboxgl from 'mapbox-gl'
@@ -10,13 +9,13 @@ import clsx from "clsx";
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 
-export default function PhotoMapCard({ photo, loading, className }: { photo: Photo, loading: boolean, className: string}) {
+export default function PhotoMapCard({ photo, className }: { photo: Photo, className: string}) {
   const mapRef = useRef()
-  const mapContainerRef = useRef()
+  const mapContainerRef = useRef<HTMLDivElement>(null)
   const token = useContext(MapTokenContext)
   
   useEffect(() => {
-    if (!token?.token) return;
+    if (!token?.token || !photo.metadata.location?.latitude || !photo.metadata.location?.longitude) return;
     mapboxgl.accessToken = token!.token.token;
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current,
@@ -24,10 +23,12 @@ export default function PhotoMapCard({ photo, loading, className }: { photo: Pho
       zoom: 12,
       attributionControl: false,
       language: 'ja'
-    });
-    new mapboxgl.Marker({ color: "#ff0000" }) // 红色
-      .setLngLat([photo.metadata.location.longitude, photo.metadata.location.latitude])
-      .addTo(mapRef.current);
+    }) | null;
+    if (mapRef.current) {
+      new mapboxgl.Marker({ color: "#ff0000" })
+        .setLngLat([photo.metadata.location.longitude, photo.metadata.location.latitude])
+        .addTo(mapRef.current);
+    }
 
     return () => {
       mapRef.current.remove()
