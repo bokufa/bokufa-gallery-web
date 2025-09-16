@@ -68,7 +68,7 @@ export default function PhotoModal(props: PhotoModalProps) {
 								</div>
 								<PhotoTitle photo={photo} />
 								<div className='gap-4 grid grid-cols-1 md:grid-cols-2'>
-									<PhotoMetaCard photo={photo} />
+									<PhotoMetaCard photo={photo} loading={loading} />
                   {photo.metadata.location ? (
                       <PhotoMapCard photo={photo} className={"overflow-hidden min-h-[109px] md:min-h-0"} /> 
                       ): null
@@ -95,7 +95,7 @@ export default function PhotoModal(props: PhotoModalProps) {
 										<PhotoDateInfo photo={photo} />
 										<Spacer y={4}/>
 										<div className='gap-4 grid grid-cols-1'>
-											<PhotoMetaCard photo={photo}/>
+											<PhotoMetaCard photo={photo} loading={loading}/>
 										</div>
 									</div>
 								</div>

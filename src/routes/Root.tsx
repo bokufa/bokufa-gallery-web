@@ -12,7 +12,9 @@ import { MapToken, MapTokenContext, MapType } from "../contexts/MapToken";
 const routes = [
   { route: '/', text: '主页', icon: <TbHome size={22}/> },
 ];
-
+type MapboxTokenResponse = {
+  token: string;
+};
 export default function Root() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [token, setToken] = useState<MapToken>()
@@ -20,7 +22,7 @@ export default function Root() {
 
   useEffect(() => {
       // mapbox
-      axios.get<Response>('https://api.bokufa.art/api/mapbox/token').then((res) => {
+      axios.get<MapboxTokenResponse>('https://api.bokufa.art/api/mapbox/token').then((res) => {
         setToken({ type: MapType.MapBox, token: res.data.token })
       })
   }, [])

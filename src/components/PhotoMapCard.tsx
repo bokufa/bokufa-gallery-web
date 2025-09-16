@@ -10,8 +10,8 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 
 
 export default function PhotoMapCard({ photo, className }: { photo: Photo, className: string}) {
-  const mapRef = useRef()
-  const mapContainerRef = useRef()
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const token = useContext(MapTokenContext)
   
   useEffect(() => {
@@ -23,7 +23,7 @@ export default function PhotoMapCard({ photo, className }: { photo: Photo, class
       zoom: 12,
       attributionControl: false,
       language: 'ja'
-    }) | null;
+    });
     if (mapRef.current) {
       new mapboxgl.Marker({ color: "#ff0000" })
         .setLngLat([photo.metadata.location.longitude, photo.metadata.location.latitude])
@@ -31,9 +31,7 @@ export default function PhotoMapCard({ photo, className }: { photo: Photo, class
     }
 
     return () => {
-      if (mapRef.current){
-        mapRef.current.remove()
-      }
+      mapRef.current?.remove()
     }
   }, [])
 
