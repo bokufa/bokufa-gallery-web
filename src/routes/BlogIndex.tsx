@@ -4,17 +4,31 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { BlogPostSummary } from "../models/blog";
-import { fetchBlogPosts, isCanceledBlogRequest } from "../services/blog";
+import {
+  fetchBlogPosts,
+  getCachedBlogPosts,
+  isCanceledBlogRequest,
+} from "../services/blog";
 import { formatShortDate } from "../utils/date";
 
 export default function BlogIndex() {
   const navigate = useNavigate();
-  const [posts, setPosts] = useState<BlogPostSummary[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [posts, setPosts] = useState<BlogPostSummary[]>(() => (
+    getCachedBlogPosts()?.items ?? []
+  ));
+  const [isLoading, setIsLoading] = useState(() => !getCachedBlogPosts());
   const [error, setError] = useState(false);
   const [requestVersion, setRequestVersion] = useState(0);
 
   useEffect(() => {
+    const cached = getCachedBlogPosts();
+    if (cached) {
+      setPosts(cached.items);
+      setIsLoading(false);
+      setError(false);
+      return;
+    }
+
     const controller = new AbortController();
     setIsLoading(true);
     setError(false);

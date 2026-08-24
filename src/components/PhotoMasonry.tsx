@@ -21,12 +21,22 @@ interface PhotoMasonryProps {
   cityId?: string;
 }
 
+const photoMasonryCache = new Map<string, Photo[]>();
+const revealedPhotoCardIds = new Set<number>();
+const loadedPhotoImageIds = new Set<number>();
+
+function createPhotoMasonryCacheKey(prefectureId?: string, cityId?: string) {
+  return `prefecture:${prefectureId || "all"}|city:${cityId || "all"}`;
+}
+
 export default function PhotoMasonry({ prefectureId, cityId }: PhotoMasonryProps) {
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const cacheKey = createPhotoMasonryCacheKey(prefectureId, cityId);
+  const cachedPhotos = photoMasonryCache.get(cacheKey);
+  const [photos, setPhotos] = useState<Photo[]>(() => cachedPhotos || []);
+  const [isInitialLoading, setIsInitialLoading] = useState(() => !cachedPhotos);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const loadedIndex = useRef<{ startIndex: number; stopIndex: number }[]>([]);
-  const animatedPhotoIds = useRef(new Set<number>());
+  const isDesktop = useMediaQuery("(min-width: 960px)");
   const { isOpen, onOpen, onClose } = useDisclosure();
   const navigate = useNavigate();
   const query = useMemo(() => ({
@@ -37,18 +47,27 @@ export default function PhotoMasonry({ prefectureId, cityId }: PhotoMasonryProps
   useEffect(() => {
     let cancelled = false;
     loadedIndex.current = [];
-    animatedPhotoIds.current.clear();
+    const cached = photoMasonryCache.get(cacheKey);
+    if (cached) {
+      setPhotos(cached);
+      setIsInitialLoading(false);
+      return;
+    }
+
     setPhotos([]);
     setIsInitialLoading(true);
     void fetchPhotos({ ...query, page_size: 20 }).then((result) => {
-      if (!cancelled) setPhotos(result);
+      if (!cancelled) {
+        photoMasonryCache.set(cacheKey, result);
+        setPhotos(result);
+      }
     }).finally(() => {
       if (!cancelled) setIsInitialLoading(false);
     });
     return () => {
       cancelled = true;
     };
-  }, [query]);
+  }, [cacheKey, query]);
 
   const maybeLoadMore = useInfiniteLoader((startIndex, stopIndex, items) => {
     if (loadedIndex.current.some((entry) => (
@@ -67,7 +86,10 @@ export default function PhotoMasonry({ prefectureId, cityId }: PhotoMasonryProps
       setPhotos((current) => {
         const currentIds = new Set(current.map((photo) => photo.id));
         const newPhotos = result.filter((photo) => !currentIds.has(photo.id));
-        return newPhotos.length ? [...current, ...newPhotos] : current;
+        if (!newPhotos.length) return current;
+        const nextPhotos = [...current, ...newPhotos];
+        photoMasonryCache.set(cacheKey, nextPhotos);
+        return nextPhotos;
       });
     });
   }, {
@@ -81,17 +103,15 @@ export default function PhotoMasonry({ prefectureId, cityId }: PhotoMasonryProps
   }, [onOpen]);
 
   const renderMasonryCard = useCallback(({ data, index }: { data: Photo; index: number }) => {
-    const shouldAnimate = !animatedPhotoIds.current.has(data.id);
-    if (shouldAnimate) animatedPhotoIds.current.add(data.id);
     return (
       <MasonryCard
         data={data}
         index={index}
-        shouldAnimate={shouldAnimate}
+        isDesktop={isDesktop}
         onOpenPhoto={openPhotoModal}
       />
     );
-  }, [openPhotoModal]);
+  }, [isDesktop, openPhotoModal]);
 
   const handlePhotoModalOpenChange = useCallback((nextIsOpen: boolean, path?: string) => {
     if (nextIsOpen) return;
@@ -194,26 +214,35 @@ function MasonryGrid({ photos, onRender, renderCard, width }: MasonryGridProps &
 const MasonryCard = memo(function MasonryCard({
   data,
   index,
-  shouldAnimate,
+  isDesktop,
   onOpenPhoto,
 }: {
   data: Photo;
   index: number;
-  shouldAnimate: boolean;
+  isDesktop: boolean;
   onOpenPhoto: (photo: Photo) => void;
 }) {
-  const isDesktop = useMediaQuery("(min-width: 960px)");
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const [isEntering, setIsEntering] = useState(() => {
+    if (revealedPhotoCardIds.has(data.id)) return false;
+    revealedPhotoCardIds.add(data.id);
+    return true;
+  });
+  const [imageLoaded, setImageLoaded] = useState(() => loadedPhotoImageIds.has(data.id));
   const openPhotoModal = () => onOpenPhoto(data);
+  const handleImageLoad = () => {
+    loadedPhotoImageIds.add(data.id);
+    setImageLoaded(true);
+  };
 
   return (
     <Card
       radius="lg"
       fullWidth
-      className={`${shouldAnimate ? "photo-card-enter" : ""} w-full border-none`}
-      style={shouldAnimate ? { animationDelay: `${Math.min(index, 12) * 34}ms` } : undefined}
+      className={`${isEntering ? "photo-card-enter" : ""} w-full border-none`}
+      style={isEntering ? { animationDelay: `${Math.min(index, 12) * 34}ms` } : undefined}
       isPressable={isDesktop}
       onPress={isDesktop ? openPhotoModal : undefined}
+      onAnimationEnd={() => setIsEntering(false)}
     >
       <CardBody
         className="relative overflow-hidden p-0"
@@ -232,9 +261,10 @@ const MasonryCard = memo(function MasonryCard({
             }`}
             decoding="async"
             draggable={false}
+            fetchPriority={index < 3 ? "high" : "auto"}
             loading={index < 6 ? "eager" : "lazy"}
             src={data.thumb_file.url}
-            onLoad={() => setImageLoaded(true)}
+            onLoad={handleImageLoad}
           />
         </div>
       </CardBody>
@@ -247,5 +277,7 @@ const MasonryCard = memo(function MasonryCard({
     </Card>
   );
 }, (previous, next) => (
-  previous.data === next.data && previous.index === next.index
+  previous.data === next.data &&
+  previous.index === next.index &&
+  previous.isDesktop === next.isDesktop
 ));

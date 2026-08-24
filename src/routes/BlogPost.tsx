@@ -10,6 +10,7 @@ import remarkGfm from "remark-gfm";
 import type { BlogPost as BlogPostData } from "../models/blog";
 import {
   fetchBlogPost,
+  getCachedBlogPost,
   isBlogPostNotFound,
   isCanceledBlogRequest,
 } from "../services/blog";
@@ -107,8 +108,12 @@ const markdownComponents: Components = {
 export default function BlogPost() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const [post, setPost] = useState<BlogPostData>();
-  const [isLoading, setIsLoading] = useState(true);
+  const [post, setPost] = useState<BlogPostData | undefined>(() => (
+    slug ? getCachedBlogPost(slug) : undefined
+  ));
+  const [isLoading, setIsLoading] = useState(() => (
+    Boolean(slug) && !getCachedBlogPost(slug || "")
+  ));
   const [notFound, setNotFound] = useState(!slug);
   const [error, setError] = useState(false);
   const [requestVersion, setRequestVersion] = useState(0);
@@ -117,6 +122,15 @@ export default function BlogPost() {
     if (!slug) {
       setIsLoading(false);
       setNotFound(true);
+      return;
+    }
+
+    const cached = getCachedBlogPost(slug);
+    if (cached) {
+      setPost(cached);
+      setIsLoading(false);
+      setNotFound(false);
+      setError(false);
       return;
     }
 

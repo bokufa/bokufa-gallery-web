@@ -14,19 +14,57 @@ const blogApi = axios.create({
   timeout: 15_000,
 });
 
+const BLOG_CACHE_TTL_MS = 5 * 60 * 1_000;
+
+interface CacheEntry<T> {
+  expiresAt: number;
+  value: T;
+}
+
+let blogPostsCache: CacheEntry<BlogPostList> | undefined;
+const blogPostCache = new Map<string, CacheEntry<BlogPost>>();
+
+function readCache<T>(entry: CacheEntry<T> | undefined) {
+  if (!entry) return undefined;
+  if (entry.expiresAt > Date.now()) return entry.value;
+  return undefined;
+}
+
+export function getCachedBlogPosts() {
+  return readCache(blogPostsCache);
+}
+
+export function getCachedBlogPost(slug: string) {
+  return readCache(blogPostCache.get(slug));
+}
+
 export async function fetchBlogPosts(signal?: AbortSignal) {
+  const cached = getCachedBlogPosts();
+  if (cached) return cached;
+
   const response = await blogApi.get<ApiSuccess<BlogPostList>>("/api/blog/posts", {
     params: { page: 1, page_size: 50 },
     signal,
   });
-  return response.data.payload;
+  blogPostsCache = {
+    expiresAt: Date.now() + BLOG_CACHE_TTL_MS,
+    value: response.data.payload,
+  };
+  return blogPostsCache.value;
 }
 
 export async function fetchBlogPost(slug: string, signal?: AbortSignal) {
+  const cached = getCachedBlogPost(slug);
+  if (cached) return cached;
+
   const response = await blogApi.get<ApiSuccess<BlogPost>>(
     `/api/blog/posts/${encodeURIComponent(slug)}`,
     { signal },
   );
+  blogPostCache.set(slug, {
+    expiresAt: Date.now() + BLOG_CACHE_TTL_MS,
+    value: response.data.payload,
+  });
   return response.data.payload;
 }
 
