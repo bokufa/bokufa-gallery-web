@@ -7,34 +7,49 @@ import { useContext } from "react";
 import { MapTokenContext } from "../contexts/MapToken";
 import clsx from "clsx";
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { applyChineseMapLabels } from "../utils/mapbox";
 
 
 export default function PhotoMapCard({ photo, className }: { photo: Photo, className: string}) {
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const token = useContext(MapTokenContext)
+  const mapboxToken = token?.token?.token;
+  const location = photo.metadata.location;
   
   useEffect(() => {
-    if (!token?.token || !photo.metadata.location?.latitude || !photo.metadata.location?.longitude) return;
-    mapboxgl.accessToken = token!.token.token;
-    if (!mapContainerRef.current) return;
-    mapRef.current = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      center: [photo.metadata.location?.longitude, photo.metadata.location?.latitude],
-      zoom: 12,
-      attributionControl: false,
-      language: 'ja'
-    });
-    if (mapRef.current) {
+    if (!mapboxToken || !location || !mapContainerRef.current) return;
+    let activeMap: mapboxgl.Map | null = null;
+    const animationFrame = window.requestAnimationFrame(() => {
+      const container = mapContainerRef.current;
+      if (!container) return;
+      container.replaceChildren();
+      mapboxgl.accessToken = mapboxToken;
+      activeMap = new mapboxgl.Map({
+        container,
+        style: "mapbox://styles/mapbox/streets-v12",
+        center: [location.longitude, location.latitude],
+        zoom: 12,
+        attributionControl: false,
+        language: 'ja'
+      });
+      mapRef.current = activeMap;
       new mapboxgl.Marker({ color: "#ff0000" })
-        .setLngLat([photo.metadata.location?.longitude, photo.metadata.location?.latitude])
-        .addTo(mapRef.current);
-    }
+        .setLngLat([location.longitude, location.latitude])
+        .addTo(activeMap);
+      activeMap.once("style.load", () => {
+        if (!activeMap) return;
+        applyChineseMapLabels(activeMap);
+        activeMap.resize();
+      });
+    });
 
     return () => {
-      mapRef.current?.remove()
+      window.cancelAnimationFrame(animationFrame);
+      activeMap?.remove();
+      if (mapRef.current === activeMap) mapRef.current = null;
     }
-  }, [])
+  }, [location, mapboxToken])
 
   return (
     <Card className={clsx(className)} isFooterBlurred>
@@ -58,4 +73,3 @@ export default function PhotoMapCard({ photo, className }: { photo: Photo, class
     </Card>
   );
 }
-

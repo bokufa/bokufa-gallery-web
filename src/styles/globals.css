@@ -62,6 +62,97 @@
   transform-origin: right center;
 }
 
+.map-glass-panel {
+  background-color: rgba(255, 255, 255, 0.28) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(145%) !important;
+  backdrop-filter: blur(18px) saturate(145%) !important;
+  border-color: rgba(255, 255, 255, 0.36) !important;
+}
+
+@keyframes photo-card-enter {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(26px);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+@keyframes photo-shell-shimmer {
+  from {
+    transform: translateX(-110%);
+  }
+
+  to {
+    transform: translateX(110%);
+  }
+}
+
+.photo-card-enter {
+  animation: photo-card-enter 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity, filter, transform;
+}
+
+.photo-image-shell::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(
+    105deg,
+    transparent 28%,
+    rgba(255, 255, 255, 0.72) 46%,
+    transparent 64%
+  );
+  animation: photo-shell-shimmer 1.35s ease-in-out infinite;
+  transition: opacity 360ms ease-out;
+}
+
+.photo-image-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.photo-image-shell.is-loaded::after {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes annotation-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.photo-annotation {
+  animation: annotation-appear 200ms ease-out;
+  transition: opacity 160ms ease-out, transform 160ms ease-out;
+}
+
+.photo-annotation img {
+  transition: opacity 180ms ease-out;
+}
+
+.photo-annotation.is-exiting {
+  opacity: 0;
+  transform: scale(0.9);
+  pointer-events: none;
+}
+
+[data-map-view="regions"] .photo-cluster-marker-wrapper {
+  display: none;
+}
+
 .atogaki-content,
 .atogaki-content button {
   font-family: "Xin Yu Gong Cang Sang Wide 120", sans-serif;
@@ -89,6 +180,11 @@
 
 @media (prefers-reduced-motion: reduce) {
   .atogaki-page-enter {
+    animation: none;
+  }
+
+  .photo-card-enter,
+  .photo-image-shell::after {
     animation: none;
   }
 }

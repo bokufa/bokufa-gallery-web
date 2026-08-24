@@ -1,0 +1,193 @@
+.map-page {
+  --map-land: #dddddd;
+  --map-line: #ffffff;
+  --map-ink: #27272a;
+  --map-ink-soft: #83818a;
+  --sakura-weak: #fbe3e7;
+  --sakura-deep: #e07689;
+  --accent: #c14e63;
+  --panel: rgb(255 255 255 / 96%);
+  --panel-line: rgb(17 17 20 / 8%);
+  --overlay-scrim: rgb(255 255 255 / 78%);
+  /* absolute (not fixed) so the page follows macOS rubber-band overscroll
+     together with the navbar */
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* pinned while the photo-list overlay scrolls the document above the map:
+   only then must the map hold still as a true background */
+.map-page.is-pinned {
+  position: fixed;
+}
+
+.map-page.is-dark {
+  --map-land: #222222;
+  --map-line: #000000;
+  --map-ink: #ececee;
+  --map-ink-soft: #9c9aa2;
+  --sakura-weak: #4f2a35;
+  --sakura-deep: #b25a73;
+  --accent: #e598aa;
+  --panel: rgb(30 30 34 / 96%);
+  --panel-line: rgb(255 255 255 / 14%);
+  --overlay-scrim: rgb(5 5 8 / 72%);
+}
+
+.map-canvas {
+  position: absolute;
+  inset: 0;
+  animation: map-reveal 480ms ease-out both;
+}
+
+.map-canvas .ol-viewport {
+  background: transparent;
+}
+
+/* the landmass floats slightly above the page, like a cut-out sheet */
+.map-canvas .map-land {
+  filter: drop-shadow(0 8px 22px rgb(64 48 54 / 13%));
+}
+
+.map-page.is-dark .map-canvas .map-land {
+  filter: drop-shadow(0 10px 26px rgb(0 0 0 / 45%));
+}
+
+/* the hovered region rides on its own layer with a deeper shadow,
+   lifting it visibly above the rest of the map */
+.map-canvas .map-hover-land {
+  filter: drop-shadow(0 2px 5px rgb(64 48 54 / 18%)) drop-shadow(0 9px 20px rgb(64 48 54 / 26%));
+}
+
+.map-page.is-dark .map-canvas .map-hover-land {
+  filter: drop-shadow(0 2px 6px rgb(0 0 0 / 42%)) drop-shadow(0 10px 24px rgb(0 0 0 / 55%));
+}
+
+/* cursor-following tooltip: a small washi tag that trails the pointer */
+.map-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.map-tip-card {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  max-width: 17rem;
+  padding: .45rem .75rem .45rem .6rem;
+  border: 1px solid var(--panel-line);
+  border-radius: 9px;
+  background: var(--panel);
+  box-shadow: 0 2px 6px rgb(24 18 20 / 6%), 0 12px 32px rgb(24 18 20 / 12%);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  transform: translateY(5px);
+  transition: opacity 140ms ease, transform 180ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.map-page.is-dark .map-tip-card {
+  box-shadow: 0 2px 6px rgb(0 0 0 / 30%), 0 14px 34px rgb(0 0 0 / 40%);
+}
+
+.map-tip.is-visible .map-tip-card {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* the tag carries the region's own choropleth tone */
+.map-tip-swatch {
+  flex: none;
+  width: 3px;
+  height: 1.05em;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.map-tip-name {
+  overflow: hidden;
+  color: var(--map-ink);
+  font-family: inherit;
+  font-size: .875rem;
+  font-weight: 650;
+  letter-spacing: .015em;
+  line-height: 1.25;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.map-tip-count {
+  display: inline-flex;
+  align-items: center;
+  gap: .28rem;
+  margin-left: .1rem;
+  color: var(--map-ink);
+  font-size: .78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.map-tip-count svg {
+  color: var(--map-ink-soft);
+}
+
+.map-tip-count.is-zero {
+  opacity: .55;
+}
+
+.map-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  pointer-events: none;
+}
+
+/* while the photo list rides on top, this veil recedes the map into a still,
+   dimmed background; clicking the exposed margins returns to the map */
+.map-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: var(--overlay-scrim);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 420ms ease;
+}
+
+.map-page.has-overlay .map-scrim {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* is-pinned outlives has-overlay until the exit animation ends, keeping the
+   canvas inert while the list is still fading out */
+.map-page.has-overlay .map-canvas,
+.map-page.is-pinned .map-canvas {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-canvas {
+    animation: none;
+  }
+
+  .map-tip-card {
+    transition: none;
+  }
+
+  .map-scrim {
+    transition: none;
+  }
+}
+
+@keyframes map-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

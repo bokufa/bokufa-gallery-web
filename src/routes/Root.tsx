@@ -1,40 +1,46 @@
 import {
   Navbar, NavbarBrand, NavbarContent, NavbarMenu, NavbarMenuItem, NavbarMenuToggle, Spacer, Link, Divider
 } from "@heroui/react";
-import { TbHome, TbNotebook } from "react-icons/tb";
+import { TbHome, TbMap, TbNotebook } from "react-icons/tb";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import axios from "axios";
 import { MapToken, MapTokenContext, MapType } from "../contexts/MapToken";
 import atogakiIcon from "../../atogaki.png";
+import { fetchMapboxToken } from "../services/map";
+import MapPage from "./MapPage";
 // import gradLeft from '../assets/gradients/left.png';
 // import gradRight from '../assets/gradients/right.png';
 
 const routes = [
   { route: '/', text: '主页', icon: <TbHome size={22}/> },
+  { route: '/map', text: '地图', icon: <TbMap size={22}/> },
   { route: '/blog', text: '後書き', icon: <TbNotebook size={22}/> },
 ];
-type MapboxTokenResponse = {
-  token: string;
-};
 export default function Root() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [token, setToken] = useState<MapToken>()
   const navigate = useNavigate();
   const location = useLocation();
   const isBlogRoute = location.pathname.startsWith('/blog');
+  const isMapRoute = location.pathname === '/map';
+  const isMapSection = location.pathname === '/map' || location.pathname.startsWith('/map/');
 
   useEffect(() => {
-      // mapbox
-      axios.get<MapboxTokenResponse>('https://api.bokufa.art/api/mapbox/token').then((res) => {
-        setToken({ type: MapType.MapBox, token: res.data.token })
+    const controller = new AbortController();
+    fetchMapboxToken(controller.signal)
+      .then((mapboxToken) => {
+        setToken({ type: MapType.MapBox, token: mapboxToken });
       })
+      .catch(() => undefined);
+
+    return () => controller.abort();
   }, [])
 
 
   return (
     <MapTokenContext.Provider value={{ token, setToken }}>
       <main className="relative min-h-dvh text-foreground scrollbar-hide">
+        <MapPage isActive={isMapSection} overlayActive={isMapSection && !isMapRoute} />
         <div
           aria-hidden="true"
           className={`pointer-events-none fixed inset-0 z-0 transition-opacity duration-700 ease-out ${
@@ -51,14 +57,16 @@ export default function Root() {
             isBlogRoute ? 'opacity-100' : 'opacity-0'
           }`}
         />
-        <div className="relative z-10">
+        <div className={`relative z-10 ${isMapRoute ? 'pointer-events-none' : ''}`}>
         <Navbar
           onMenuOpenChange={setIsMenuOpen}
           isMenuOpen={isMenuOpen}
-          className={`border-b transition-colors duration-700 ease-out ${
-            isBlogRoute
-              ? 'border-black/5 bg-[rgba(255,255,255,0.55)] text-[#382920] shadow-sm backdrop-blur-md'
-              : 'border-transparent bg-white text-foreground shadow-none'
+          className={`pointer-events-auto border-b border-black/5 shadow-sm transition-[background-color,backdrop-filter] duration-700 ease-out ${
+            isMapSection
+              ? 'map-glass-panel'
+              : 'bg-[rgba(255,255,255,0.55)] backdrop-blur-md'
+          } ${
+            isBlogRoute ? 'text-[#382920]' : 'text-foreground'
           }`}
         >
           <NavbarBrand>
@@ -111,7 +119,9 @@ export default function Root() {
           className="mx-auto max-w-[1024px] flex"
           style={{ minHeight: 'calc(100dvh - 4rem)' }}
         >
-          <div className="relative z-10 max-w-64 hidden md:flex flex-col sticky top-[5rem] h-[100%] flex-shrink-0">
+          <div className={`relative z-30 max-w-64 hidden md:flex flex-col sticky top-[5rem] h-[100%] flex-shrink-0 pb-6 transition-[background-color,box-shadow,backdrop-filter] ${
+            isMapSection ? 'map-glass-panel pointer-events-auto rounded-large shadow-medium' : ''
+          }`}>
             <ul>
               {routes.map((r) => (
                 <li key={r.route}>
