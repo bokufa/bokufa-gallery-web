@@ -3,6 +3,8 @@ import { Routes, Route, useNavigate } from "react-router-dom";
 // import "./App.css"
 import Root from "./routes/Root.tsx";
 import Index from "./routes/Index.tsx";
+import BlogIndex from "./routes/BlogIndex.tsx";
+import BlogPost from "./routes/BlogPost.tsx";
 
 
 function App() {
@@ -13,6 +15,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Root />}>
           <Route index element={<Index />} />
+          <Route path="blog" element={<BlogIndex />} />
+          <Route path="blog/:slug" element={<BlogPost />} />
           {/* <Route path="gallery" element={<Gallery />} /> */}
           <Route path="about" element={<div>Hello World</div>} />
         </Route>
