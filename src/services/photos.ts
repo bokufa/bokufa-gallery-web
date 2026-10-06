@@ -51,8 +51,8 @@ export async function fetchPhotos(
     const allPhotos = await loadAllPhotos();
     const filtered = allPhotos.filter((photo) => {
       const city = photo.metadata.city;
-      if (params.prefecture_id && city?.prefecture.id.toString() !== params.prefecture_id) return false;
-      if (params.city_id && city?.id.toString() !== params.city_id) return false;
+      if (params.prefecture_id && city?.prefecture?.id?.toString() !== params.prefecture_id) return false;
+      if (params.city_id && city?.id?.toString() !== params.city_id) return false;
       return true;
     });
     let startIndex = 0;

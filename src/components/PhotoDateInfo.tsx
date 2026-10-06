@@ -7,7 +7,7 @@ export default function PhotoDateInfo({ photo }: { photo: Photo }) {
     <div className='flex items-center text-small text-default-500 gap-1.5'>
       <IoCalendarOutline size={18}/>
       <div>
-        {moment(photo.metadata.datetime).utcOffset(`+${photo.metadata.timezone.split('+')[1]}`).format('YYYY-MM-DD HH:mm ([GMT]Z)')}
+        {moment.utc(photo.metadata.datetime).utcOffset(photo.metadata.timezone || '+00:00').format('YYYY-MM-DD HH:mm ([GMT]Z)')}
       </div>
     </div>
   );

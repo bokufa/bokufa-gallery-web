@@ -14,6 +14,7 @@ import { MultiPolygon, Point, Polygon } from "ol/geom";
 import Feature, { FeatureLike } from "ol/Feature";
 import { Select, SelectItem, Spinner } from "@heroui/react";
 import { TbPhoto } from "react-icons/tb";
+import { MAP_COUNTRIES, mapCountryForCode, photoBelongsToCountry } from "../data/mapCountries";
 import './map_openlayers.css';
 import 'ol/ol.css';
 
@@ -28,15 +29,6 @@ interface RegionsMapProps {
   onRegionSelect: (prefectureId: number, prefectureName: string) => void;
   onBack: () => void;
 }
-
-const JAPAN_COUNTRY: Country = {
-  id: 2,
-  name: "日本",
-  code: "JPN",
-  center: [137.5, 37.5],
-  extent: [122.5, 20, 154.5, 46.5],
-  zoom: [4.4, 3.7, 9],
-};
 
 function geoName(
   entity: { name: string; i18n?: Record<string, string> },
@@ -327,8 +319,10 @@ export default function RegionsMap({ photos, overlayActive, onRegionSelect, onBa
   const pageRef = useRef<HTMLDivElement>(null)
   const mapElement = useRef<HTMLDivElement>(null)
   const tipRef = useRef<HTMLDivElement>(null)
-  const [country, setCountry] = useState<Country>(JAPAN_COUNTRY)
-  const [countries] = useState<Country[]>([JAPAN_COUNTRY])
+  const [country, setCountry] = useState<Country>(() => mapCountryForCode(
+    new URLSearchParams(window.location.search).get('country'),
+  ))
+  const countries = MAP_COUNTRIES
   const [prefectures, setPrefectures] = useState<LocalizedPrefecture[]>([])
   const [ticket, setTicket] = useState<TicketInfo | null>(null)
   const lastTicket = useRef<TicketInfo | null>(null)
@@ -422,30 +416,40 @@ export default function RegionsMap({ photos, overlayActive, onRegionSelect, onBa
 
   useEffect(() => {
     let cancelled = false
-    const photoData = new globalThis.Map<string, { id: number; count: number }>()
+    const photoDataByName = new globalThis.Map<string, { id: number; count: number }>()
+    const photoDataById = new globalThis.Map<number, { id: number; count: number }>()
     for (const photo of photos) {
       const prefecture = photo.metadata.city?.prefecture
-      if (!prefecture) continue
-      const current = photoData.get(prefecture.name)
-      photoData.set(prefecture.name, {
+      if (!prefecture || !photoBelongsToCountry(prefecture.country, country)) continue
+      const current = photoDataById.get(prefecture.id) ?? photoDataByName.get(prefecture.name)
+      const value = {
         id: prefecture.id,
         count: (current?.count ?? 0) + 1,
-      })
+      }
+      photoDataById.set(prefecture.id, value)
+      photoDataByName.set(prefecture.name, value)
     }
-    void fetch(`${import.meta.env.BASE_URL}geojson/JPN.json`)
-      .then((response) => response.json())
+    void fetch(`${import.meta.env.BASE_URL}geojson/${country.code}.json`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`GeoJSON ${country.code} 加载失败`)
+        return response.json()
+      })
       .then((collection: { features: Array<{ properties: { id: number; name: string; i18n: Record<string, string> } }> }) => {
         if (cancelled) return
-        setPrefectures(collection.features.map(({ properties }) => ({
-          id: properties.id,
-          name: properties.name,
-          i18n: properties.i18n,
-          apiId: photoData.get(properties.name)?.id,
-          country,
-          photos_count: photoData.get(properties.name)?.count ?? 0,
-          cities: [],
-        })))
+        setPrefectures(collection.features.map(({ properties }) => {
+          const photoData = photoDataById.get(properties.id) ?? photoDataByName.get(properties.name)
+          return {
+            id: properties.id,
+            name: properties.name,
+            i18n: properties.i18n,
+            apiId: photoData?.id,
+            country,
+            photos_count: photoData?.count ?? 0,
+            cities: [],
+          }
+        }))
       })
+      .catch(() => { if (!cancelled) setPrefectures([]) })
     return () => {
       cancelled = true
     }
