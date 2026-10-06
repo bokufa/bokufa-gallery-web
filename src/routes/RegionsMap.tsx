@@ -197,7 +197,8 @@ function largestPart(geometry: MultiPolygon): MultiPolygon {
       largest = polygon
     }
   }
-  const part = new MultiPolygon([(largest ?? geometry.getPolygon(0)).getCoordinates()])
+  const polygon = largest ?? geometry.getPolygon(0)
+  const part = new MultiPolygon(polygon ? [polygon.getCoordinates()] : [])
   largestPartCache.set(geometry, part)
   return part
 }
@@ -205,7 +206,8 @@ function largestPart(geometry: MultiPolygon): MultiPolygon {
 function fixedLabelPoint(geometry: MultiPolygon): Point {
   const cached = labelPointCache.get(geometry)
   if (cached) return cached
-  const [x, y] = largestPart(geometry).getPolygon(0).getInteriorPoint().getCoordinates()
+  const polygon = largestPart(geometry).getPolygon(0)
+  const [x, y] = polygon?.getInteriorPoint().getCoordinates() ?? [0, 0]
   const point = new Point([x, y])
   labelPointCache.set(geometry, point)
   return point
@@ -670,9 +672,9 @@ export default function RegionsMap({ photos, overlayActive, onRegionSelect, onBa
 
       // ---- layers --------------------------------------------------------
 
-      const source = new VectorSource({
+      const source = new VectorSource<Feature>({
         url: `/geojson/${country.code}.json`,
-        format: new GeoJSON(),
+        format: new GeoJSON<Feature>(),
       })
       const featureById: Record<number, Feature> = {}
 
@@ -698,7 +700,7 @@ export default function RegionsMap({ photos, overlayActive, onRegionSelect, onBa
       // out in one slot while the incoming region fades in on the other —
       // everything stays continuous, nothing jumps between silhouettes.
       const makeHoverSlot = () => {
-        const slotSource = new VectorSource()
+        const slotSource = new VectorSource<Feature>()
         const layer = new VectorLayer({
           ...layerOptions,
           source: slotSource,
@@ -1124,7 +1126,7 @@ export default function RegionsMap({ photos, overlayActive, onRegionSelect, onBa
         lastPixel = null
         clearHover()
       }
-      viewport.addEventListener('pointerleave', onPointerLeave)
+      viewport?.addEventListener('pointerleave', onPointerLeave)
 
       olMap.on('click', (e) => {
         // pointer-events CSS already shields the canvas while the list is up,
@@ -1190,7 +1192,7 @@ export default function RegionsMap({ photos, overlayActive, onRegionSelect, onBa
         if (raf) cancelAnimationFrame(raf)
         if (navTimer) window.clearTimeout(navTimer)
         if (hoverClearTimer) window.clearTimeout(hoverClearTimer)
-        viewport.removeEventListener('pointerleave', onPointerLeave)
+        viewport?.removeEventListener('pointerleave', onPointerLeave)
         resizeObserver.disconnect()
         olMap.setTarget(undefined)
         if (import.meta.env.DEV) {
