@@ -12,5 +12,8 @@ owners and presents them for editorial identification. This personal gallery
 uses the image to identify film used for photographs, without affiliation or
 endorsement. It is a packaging image, not an official transparent SVG asset.
 
-The scanner name remains a separate field. Other stocks retain text rather than
-being misidentified as C200; failed image requests also fall back to stock text.
+The stock image follows the camera model in the card header, separated by `｜`.
+The scanner model follows the lens on the next row, also separated by `｜`, using
+the same font size as lens information. Neither row adds field-name prefixes.
+The scanner name remains a separate data field. Other stocks retain text rather
+than being misidentified as C200; failed image requests also fall back to stock text.

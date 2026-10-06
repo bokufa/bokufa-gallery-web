@@ -12,16 +12,19 @@ const source = ts.transpileModule(await readFile(new URL("../src/components/Film
   .replaceAll('"react"', JSON.stringify(import.meta.resolve("react")));
 const filmInfoUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
 const { default: FilmInfo } = await import(filmInfoUrl);
-const render = film => renderToStaticMarkup(React.createElement(FilmInfo, { film }));
+const render = film => renderToStaticMarkup(React.createElement(FilmInfo, { stock: film.stock }));
 
-test("C200 displays the complete selected image and retains scanner information", () => {
+test("C200 displays the complete selected image after a separator without field labels", () => {
   const html = render({ stock: "FUJI C200", scanner: "FUJI SP-3000" });
   assert.match(html, /src="\/film-logos\/fujicolor-c200\.jpg"/);
   assert.match(html, /alt="FUJIFILM FUJICOLOR C200"/);
   assert.match(html, /width="817" height="459"/);
   assert.match(html, /object-contain/);
   assert(!html.includes("object-cover"));
-  assert.match(html, /扫描 FUJI SP-3000/);
+  assert(html.includes("｜"));
+  assert(!html.includes("扫描"));
+  assert(!html.includes("胶片"));
+  assert(!html.includes("FUJI SP-3000"));
 });
 
 test("brand aliases are recognized but other film stocks are never mislabeled", () => {
@@ -29,16 +32,16 @@ test("brand aliases are recognized but other film stocks are never mislabeled", 
   for (const stock of ["FUJI 200", "FUJI C400", "KODAK GOLD 200"]) {
     const html = render({ stock, scanner: "FUJI SP-3000" });
     assert(!html.includes("<img"));
-    assert(html.includes(`胶片 ${stock}`));
-    assert(html.includes("扫描 FUJI SP-3000"));
+    assert(html.includes(stock));
+    assert(!html.includes("胶片"));
+    assert(!html.includes("扫描"));
   }
 });
 
-test("digital photos have no film row, and scanner-only metadata remains visible", () => {
+test("missing stock does not render a stock label or dangling separator", () => {
   assert.equal(render({}), "");
   const html = render({ scanner: "FUJI SP-3000" });
-  assert(!html.includes("<img"));
-  assert(html.includes("扫描 FUJI SP-3000"));
+  assert.equal(html, "");
 });
 
 test("the bundled image exactly matches the full preview the user selected", async () => {
@@ -81,6 +84,26 @@ test("the actual photo card shows Nikon, the full C200 image, lens and scanner f
   ]) {
     const photo = { metadata: { ...metadata, lens: { manufacture: { name: "Nikon" }, model: "AI Nikkor 50mm f/1.4S" }, photographic_sensitivity: 200, f_number: 1.4, exposure_time_rat: "1/1000", focal_length: 50 } };
     const html = renderToStaticMarkup(React.createElement(PhotoMetaCard, { photo, loading: false }));
-    for (const text of ["/camera-logos/nikon.svg", "/film-logos/fujicolor-c200.jpg", "AI Nikkor 50mm f/1.4S", "扫描 FUJI SP-3000", "ISO 200"]) assert(html.includes(text));
+    for (const text of ["/camera-logos/nikon.svg", "/film-logos/fujicolor-c200.jpg", "AI Nikkor 50mm f/1.4S", "FUJI SP-3000", "ISO 200"]) assert(html.includes(text));
+    assert(!html.includes("胶片"));
+    assert(!html.includes("扫描"));
+    const header = html.indexOf('data-photo-meta="camera"');
+    const body = html.indexOf('data-photo-meta="lens"');
+    const footer = html.indexOf('data-photo-meta="exposure"');
+    const stock = html.indexOf('/film-logos/fujicolor-c200.jpg');
+    const lens = html.indexOf('AI Nikkor 50mm f/1.4S');
+    const scanner = html.indexOf('FUJI SP-3000');
+    assert(header >= 0 && header < stock && stock < body, "stock belongs after the camera in the header");
+    assert(body < lens && lens < scanner && scanner < footer, "scanner belongs after the lens in the body");
+    assert.equal((html.match(/｜/g) || []).length, 2);
   }
+});
+
+test("scanner-only metadata uses normal lens-row type and preserves a single separator", () => {
+  const photo = { metadata: { camera: { manufacture: { name: "Nikon" }, model: "FM" }, lens: { manufacture: { name: "Nikon" }, model: "AI Nikkor 50mm f/1.4S" }, film: { scanner: "FUJI SP-3000" } } };
+  const html = renderToStaticMarkup(React.createElement(PhotoMetaCard, { photo, loading: false }));
+  assert(html.includes("FUJI SP-3000"));
+  assert(!html.includes("/film-logos/"));
+  assert(!html.includes("text-xs"));
+  assert.equal((html.match(/｜/g) || []).length, 1);
 });
