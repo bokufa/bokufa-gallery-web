@@ -38,6 +38,17 @@ test("brand aliases are recognized but other film stocks are never mislabeled", 
   }
 });
 
+test("the full film image fits the 20px metadata line without enlarging it", () => {
+  const html = render({ stock: "FUJI C200" });
+  const image = html.match(/<img\b[^>]*>/)?.[0];
+  assert(image);
+  assert.match(image, /class="[^"]*\bh-5\b[^"]*\bw-auto\b/);
+  assert(!image.includes("h-auto"));
+  assert(!image.includes("w-24"));
+  assert.match(html, /inline-flex h-5 items-center/);
+  assert.match(image, /object-contain/);
+});
+
 test("missing stock does not render a stock label or dangling separator", () => {
   assert.equal(render({}), "");
   const html = render({ scanner: "FUJI SP-3000" });

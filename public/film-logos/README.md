@@ -13,6 +13,8 @@ uses the image to identify film used for photographs, without affiliation or
 endorsement. It is a packaging image, not an official transparent SVG asset.
 
 The stock image follows the camera model in the card header, separated by `｜`.
+Its displayed height is capped at the metadata line's 20px height, with automatic
+width and vertical centering, so the full image cannot make the row taller.
 The scanner model follows the lens on the next row, also separated by `｜`, using
 the same font size as lens information. Neither row adds field-name prefixes.
 The scanner name remains a separate data field. Other stocks retain text rather
