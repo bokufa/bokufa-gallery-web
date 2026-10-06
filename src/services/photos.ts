@@ -1,6 +1,7 @@
 import axios from "axios";
 
 import type { Photo, Response } from "../models/gallery";
+import { isFilmPhoto } from "../utils/film";
 
 const photoApi = axios.create({
   baseURL:
@@ -44,13 +45,15 @@ export async function fetchPhotos(
     last_datetime?: string;
     prefecture_id?: string;
     city_id?: string;
+    film_only?: boolean;
   },
   signal?: AbortSignal,
 ) {
-  if (params.prefecture_id || params.city_id) {
+  if (params.prefecture_id || params.city_id || params.film_only) {
     const allPhotos = await loadAllPhotos();
     const filtered = allPhotos.filter((photo) => {
       const city = photo.metadata.city;
+      if (params.film_only && !isFilmPhoto(photo)) return false;
       if (params.prefecture_id && city?.prefecture?.id?.toString() !== params.prefecture_id) return false;
       if (params.city_id && city?.id?.toString() !== params.city_id) return false;
       return true;

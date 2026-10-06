@@ -1,7 +1,7 @@
 import {
   Navbar, NavbarBrand, NavbarContent, NavbarMenu, NavbarMenuItem, NavbarMenuToggle, Spacer, Link, Divider
 } from "@heroui/react";
-import { TbHome, TbMap, TbNotebook } from "react-icons/tb";
+import { TbHome, TbMap, TbNotebook, TbMovie } from "react-icons/tb";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { MapToken, MapTokenContext, MapType } from "../contexts/MapToken";
@@ -13,6 +13,7 @@ import MapPage from "./MapPage";
 
 const routes = [
   { route: '/', text: '主页', icon: <TbHome size={22}/> },
+  { route: '/film', text: '胶片', icon: <TbMovie size={22}/> },
   { route: '/map', text: '地图', icon: <TbMap size={22}/> },
   { route: '/blog', text: '後書き', icon: <TbNotebook size={22}/> },
 ];

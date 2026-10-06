@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate } from "react-router-dom";
 // import "./App.css"
 import Root from "./routes/Root.tsx";
 import Index from "./routes/Index.tsx";
+import FilmPage from "./routes/FilmPage.tsx";
 import BlogIndex from "./routes/BlogIndex.tsx";
 import BlogPost from "./routes/BlogPost.tsx";
 import PhotoPage from "./routes/PhotoPage.tsx";
@@ -17,6 +18,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Root />}>
           <Route index element={<Index />} />
+          <Route path="film" element={<FilmPage />} />
           <Route path="map" element={null} />
           <Route path="map/prefecture/:prefectureId" element={<PrefecturePage />} />
           <Route path="map/prefecture/:prefectureId/city/:cityId" element={<PrefecturePage />} />

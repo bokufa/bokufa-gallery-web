@@ -1,4 +1,4 @@
-import { Card, CardBody, CardFooter, Spinner, useDisclosure } from "@heroui/react";
+import { Button, Card, CardBody, CardFooter, Spinner, useDisclosure } from "@heroui/react";
 import { useWindowSize } from "@react-hook/window-size";
 import {
   useContainerPosition,
@@ -19,21 +19,24 @@ import PhotoModal from "./PhotoModal";
 interface PhotoMasonryProps {
   prefectureId?: string;
   cityId?: string;
+  filmOnly?: boolean;
 }
 
 const photoMasonryCache = new Map<string, Photo[]>();
 const revealedPhotoCardIds = new Set<number>();
 const loadedPhotoImageIds = new Set<number>();
 
-function createPhotoMasonryCacheKey(prefectureId?: string, cityId?: string) {
-  return `prefecture:${prefectureId || "all"}|city:${cityId || "all"}`;
+function createPhotoMasonryCacheKey(prefectureId?: string, cityId?: string, filmOnly = false) {
+  return `prefecture:${prefectureId || "all"}|city:${cityId || "all"}|film:${filmOnly}`;
 }
 
-export default function PhotoMasonry({ prefectureId, cityId }: PhotoMasonryProps) {
-  const cacheKey = createPhotoMasonryCacheKey(prefectureId, cityId);
+export default function PhotoMasonry({ prefectureId, cityId, filmOnly = false }: PhotoMasonryProps) {
+  const cacheKey = createPhotoMasonryCacheKey(prefectureId, cityId, filmOnly);
   const cachedPhotos = photoMasonryCache.get(cacheKey);
   const [photos, setPhotos] = useState<Photo[]>(() => cachedPhotos || []);
   const [isInitialLoading, setIsInitialLoading] = useState(() => !cachedPhotos);
+  const [loadError, setLoadError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const loadedIndex = useRef<{ startIndex: number; stopIndex: number }[]>([]);
   const isDesktop = useMediaQuery("(min-width: 960px)");
@@ -42,11 +45,13 @@ export default function PhotoMasonry({ prefectureId, cityId }: PhotoMasonryProps
   const query = useMemo(() => ({
     prefecture_id: prefectureId && prefectureId !== "0" ? prefectureId : undefined,
     city_id: cityId && cityId !== "0" ? cityId : undefined,
-  }), [cityId, prefectureId]);
+    film_only: filmOnly || undefined,
+  }), [cityId, prefectureId, filmOnly]);
 
   useEffect(() => {
     let cancelled = false;
     loadedIndex.current = [];
+    setLoadError(false);
     const cached = photoMasonryCache.get(cacheKey);
     if (cached) {
       setPhotos(cached);
@@ -61,13 +66,15 @@ export default function PhotoMasonry({ prefectureId, cityId }: PhotoMasonryProps
         photoMasonryCache.set(cacheKey, result);
         setPhotos(result);
       }
+    }).catch(() => {
+      if (!cancelled) setLoadError(true);
     }).finally(() => {
       if (!cancelled) setIsInitialLoading(false);
     });
     return () => {
       cancelled = true;
     };
-  }, [cacheKey, query]);
+  }, [cacheKey, query, retryCount]);
 
   const maybeLoadMore = useInfiniteLoader((startIndex, stopIndex, items) => {
     if (loadedIndex.current.some((entry) => (
@@ -91,6 +98,10 @@ export default function PhotoMasonry({ prefectureId, cityId }: PhotoMasonryProps
         photoMasonryCache.set(cacheKey, nextPhotos);
         return nextPhotos;
       });
+    }).catch(() => {
+      loadedIndex.current = loadedIndex.current.filter((entry) => (
+        entry.startIndex !== startIndex || entry.stopIndex !== stopIndex
+      ));
     });
   }, {
     isItemLoaded: (index, items) => Boolean(items[index]),
@@ -130,6 +141,17 @@ export default function PhotoMasonry({ prefectureId, cityId }: PhotoMasonryProps
             classNames={{ label: "text-default-500" }}
           />
         </div>
+      ) : null}
+      {!isInitialLoading && loadError ? (
+        <div role="alert" className="flex min-h-48 flex-col items-center justify-center gap-3 text-default-500">
+          <p>照片暂时无法加载</p>
+          <Button size="sm" variant="flat" onPress={() => setRetryCount((count) => count + 1)}>
+            重试
+          </Button>
+        </div>
+      ) : null}
+      {!isInitialLoading && !loadError && filmOnly && !photos.length ? (
+        <p className="py-16 text-center text-small text-default-400">暂无胶片照片</p>
       ) : null}
       {photos.length ? (
         <MeasuredMasonryGrid
