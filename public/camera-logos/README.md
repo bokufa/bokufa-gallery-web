@@ -1,9 +1,9 @@
 # Camera identification assets
 
 These marks identify the equipment used for photos, not sponsorship or affiliation.
-Trademarks remain the property of their respective owners. Except for the Ricoh
-SVG framing described below, files are downloaded unchanged; black/white display
-and the Nikon archive image framing use CSS only.
+Trademarks remain the property of their respective owners. Files are downloaded
+unchanged except for the Ricoh and user-provided Nikon SVG framing described
+below; black/white display uses CSS only.
 
 - `sony.svg`: https://www.sony.jp/header-footer/assets/img/GlobalHeader/logo.svg
 - `sony-alpha.svg`: copied unchanged from
@@ -31,6 +31,11 @@ and the Nikon archive image framing use CSS only.
   Nikon's 1968 track symbol, in use when the FM was introduced in 1977, not the
   1988 or 2003 marks. Source: https://www.nikon.com/company/corporate/brand/brand_symbol/.
   `FM` remains a small typeset model label; it is not presented as a sourced model logo.
+- `nikon.svg`: selected by the user from `Downloads/Nikon-Logo-4.svg`.
+  The local source file is not changed. The bundled copy preserves all wordmark
+  paths, removes the full-page background and external DTD, and tightens its
+  viewBox for an aligned 0.7rem wordmark. This replaces the track symbol in the
+  card; the older archive asset above is retained but not rendered.
 - `iphone-14-pro.svg`: Apple wordmark preserved at
   https://commons.wikimedia.org/wiki/File:IPhone_14_Pro_wordmark.svg
   (source: Apple's original iPhone 14 Pro product page, PD-textlogo/trademark).

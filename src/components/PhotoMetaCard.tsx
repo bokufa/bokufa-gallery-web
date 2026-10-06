@@ -2,6 +2,7 @@ import { Card, CardHeader, CardBody, CardFooter, Divider, Skeleton } from "@hero
 import { Photo } from "../models/gallery";
 import CameraIdentity from "./CameraIdentity";
 import { cameraIdentity } from "../utils/cameraIdentity";
+import FilmInfo from "./FilmInfo";
 
 export default function PhotoMetaCard({ photo, loading }: { photo: Photo, loading: boolean }) {
   const { film } = cameraIdentity(photo.metadata);
@@ -24,11 +25,7 @@ export default function PhotoMetaCard({ photo, loading }: { photo: Photo, loadin
         ) : (
           <>
             <p>{photo.metadata.lens ? `${photo.metadata.lens?.manufacture.name} ${photo.metadata.lens?.model}` : 'unknown_lens'}</p>
-            {film.stock || film.scanner ? (
-              <p className="mt-1 text-xs leading-relaxed">
-                {[film.stock && `胶片 ${film.stock}`, film.scanner && `扫描 ${film.scanner}`].filter(Boolean).join(" · ")}
-              </p>
-            ) : null}
+            <FilmInfo film={film} />
           </>
         )}
       </CardBody>

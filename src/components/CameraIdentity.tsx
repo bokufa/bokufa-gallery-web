@@ -7,13 +7,6 @@ import type { CameraLogo } from "../utils/cameraIdentity";
 function Logo({ logo, fallback }: { logo: CameraLogo; fallback: string }) {
   const [failed, setFailed] = useState(false);
   if (failed) return <span>{fallback}</span>;
-  if (logo.crop) return (
-    <span className="relative block shrink-0 overflow-hidden mix-blend-multiply" style={{ width: logo.width, height: logo.height }}>
-      <img src={logo.src} alt={logo.label} onError={() => setFailed(true)}
-        className="absolute max-w-none" width={logo.width * 1.25} height={logo.width * 1.25 * 0.616}
-        style={{ left: -logo.width * 0.125, top: -logo.width * 0.211 }} />
-    </span>
-  );
   return <img src={logo.src} alt={logo.label} width={logo.width} height={logo.height}
     onError={() => setFailed(true)} className={`block shrink-0 object-contain ${logo.preserveColor ? "" : "brightness-0"}`}
     style={{ width: logo.width, height: logo.height }} />;
@@ -38,8 +31,7 @@ export default function CameraIdentity({ metadata }: { metadata: Metadata }) {
           {identity.modelLogo.suffix ? <span>{identity.modelLogo.suffix}</span> : null}
         </span>
       ) : (
-        // FM has no separate official wordmark asset in Nikon's brand archive.
-        // Keep its model name next to the genuine period brand symbol.
+        // Keep model names next to the selected manufacturer marks.
         <span>
           {identity.model || "Unknown camera"}
         </span>

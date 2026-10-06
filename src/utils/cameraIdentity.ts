@@ -5,7 +5,6 @@ export interface CameraLogo {
   label: string;
   width: number;
   height: number;
-  crop?: "nikon-1968";
   suffix?: string;
   preserveColor?: boolean;
 }
@@ -45,7 +44,7 @@ export function cameraIdentity(metadata: Metadata) {
   } else if (brand === "RICOH") {
     brandLogo = { src: "/camera-logos/ricoh.svg", label: "RICOH", width: 61.33, height: 11.2, preserveColor: true };
   } else if (/^nikon$/i.test(brand) && key === "FM") {
-    brandLogo = { src: "/camera-logos/nikon-1968.jpg", label: "Nikon (1968)", width: 58.8, height: 21, crop: "nikon-1968" };
+    brandLogo = { src: "/camera-logos/nikon.svg", label: "Nikon", width: 47.29, height: 11.2, preserveColor: true };
   } else if (/^apple$/i.test(brand) && key === "IPHONE 14 PRO") {
     modelLogo = { src: "/camera-logos/iphone-14-pro.svg", label: model, width: 90.81, height: 11.2 };
   }

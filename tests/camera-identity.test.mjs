@@ -51,7 +51,8 @@ test("legacy and new FM records show the same equipment and independent film inf
   const next = { ...metadata("Nikon", "FM"), film: { stock: "FUJI C200", scanner: "FUJI SP-3000" } };
   assert.deepEqual(cameraIdentity(legacy), cameraIdentity(next));
   assert.deepEqual(legacy, snapshot);
-  assert.equal(cameraIdentity(next).brandLogo.src, "/camera-logos/nikon-1968.jpg");
+  assert.equal(cameraIdentity(next).brandLogo.src, "/camera-logos/nikon.svg");
+  assert.equal(cameraIdentity(next).brandLogo.height, 11.2);
 });
 
 test("unknown models retain text and never borrow an unrelated model logo", () => {
@@ -87,4 +88,14 @@ test("rendered Sony row uses alpha + model text with equal-height symbols", () =
   assert.match(html, /sony-alpha\.svg/);
   assert.match(html, />7 IV<\/span>/);
   assert(!html.includes('/camera-logos/sony-a7iv.svg'));
+});
+
+test("FM uses the user-selected Nikon SVG while retaining separate film details", () => {
+  const value = { ...metadata("Nikon", "FM"), film: { stock: "FUJI C200", scanner: "FUJI SP-3000" } };
+  const html = renderToStaticMarkup(React.createElement(CameraIdentity, { metadata: value }));
+  assert.match(html, /src="\/camera-logos\/nikon\.svg"/);
+  assert.match(html, /height="11.2"/);
+  assert.match(html, />FM<\/span>/);
+  assert(!html.includes('nikon-1968.jpg'));
+  assert.deepEqual(cameraIdentity(value).film, value.film);
 });
