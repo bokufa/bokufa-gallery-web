@@ -25,6 +25,8 @@ const photo = (id, manufacture, model, region = 1) => ({
 test("recognizes existing film metadata without mistaking digital cameras for film", () => {
   assert.equal(isFilmPhoto(photo(1, "Nikon FM", "FUJI C200 · FUJI SP-3000")), true);
   assert.equal(isFilmPhoto(photo(1, "Nikon", "Nikon FM")), true);
+  assert.equal(isFilmPhoto(photo(1, "Nikon", "FM")), true);
+  assert.equal(isFilmPhoto({ metadata: { film: { stock: "FUJI C200" } } }), true);
   assert.equal(isFilmPhoto(photo(1, "Unknown", "FUJI C200 · FUJI SP-3000")), true);
   for (const [brand, model] of [
     ["Nikon", "Z6"], ["FUJIFILM", "X-T5"], ["SONY", "ILCE-7M4"],

@@ -1,7 +1,10 @@
 import { Card, CardHeader, CardBody, CardFooter, Divider, Skeleton } from "@heroui/react";
 import { Photo } from "../models/gallery";
+import CameraIdentity from "./CameraIdentity";
+import { cameraIdentity } from "../utils/cameraIdentity";
 
 export default function PhotoMetaCard({ photo, loading }: { photo: Photo, loading: boolean }) {
+  const { film } = cameraIdentity(photo.metadata);
   return (
     <Card className='overflow-visible'>
       <CardHeader className='text-small font-semibold bg-default-100 py-2'>
@@ -10,12 +13,7 @@ export default function PhotoMetaCard({ photo, loading }: { photo: Photo, loadin
             <div className="h-5 w-2/5 rounded-lg bg-default-200"></div>
           </Skeleton>
         ) : (
-          <>
-            <code className='text-small'>{photo.metadata.camera?.manufacture.name}</code>
-            <code className='text-small text-default-300 font-extralight'>|</code>
-            <code className='text-small'>{photo.metadata.camera?.model}</code>
-            <code className='text-small text-default-300 font-extralight'>|</code>
-          </>
+          <CameraIdentity metadata={photo.metadata} />
         )}
       </CardHeader>
       <CardBody className='text-small text-default-500 py-2 overflow-y-visible'>
@@ -24,7 +22,14 @@ export default function PhotoMetaCard({ photo, loading }: { photo: Photo, loadin
             <div className="h-5 w-4/5 rounded-lg bg-default-200"></div>
           </Skeleton>
         ) : (
-          photo.metadata.lens ? `${photo.metadata.lens?.manufacture.name} ${photo.metadata.lens?.model}` : 'unknown_lens'
+          <>
+            <p>{photo.metadata.lens ? `${photo.metadata.lens?.manufacture.name} ${photo.metadata.lens?.model}` : 'unknown_lens'}</p>
+            {film.stock || film.scanner ? (
+              <p className="mt-1 text-xs leading-relaxed">
+                {[film.stock && `胶片 ${film.stock}`, film.scanner && `扫描 ${film.scanner}`].filter(Boolean).join(" · ")}
+              </p>
+            ) : null}
+          </>
         )}
       </CardBody>
       <Divider className='bg-default-100'/>

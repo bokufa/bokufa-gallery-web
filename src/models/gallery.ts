@@ -45,6 +45,7 @@ export interface Author {
 
 export interface Metadata {
   camera?: Camera
+  film?: FilmMetadata
   lens?: Lens
   has_location?: boolean
   location?: Coordinate
@@ -58,6 +59,11 @@ export interface Metadata {
   place?: Place
   timezone: string
   altitude?: number
+}
+
+export interface FilmMetadata {
+  stock?: string
+  scanner?: string
 }
 
 export interface Camera {

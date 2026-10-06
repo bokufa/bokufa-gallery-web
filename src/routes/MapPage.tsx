@@ -1,4 +1,4 @@
-import { Button, Select, SelectItem, Spinner } from "@heroui/react";
+import { Button, Spinner } from "@heroui/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import mapboxgl from "mapbox-gl";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
@@ -23,7 +23,7 @@ import type { Photo, PhotoClusterItem } from "../models/gallery";
 import { fetchMapboxToken, isCanceledMapRequest } from "../services/map";
 import { fetchMapPhotos, isCanceledPhotoRequest } from "../services/photos";
 import { applyChineseMapLabels } from "../utils/mapbox";
-import { MAP_COUNTRIES, mapCountryForCode, photoBelongsToCountry } from "../data/mapCountries";
+import { buildPhotoMapItems } from "../utils/photoMap";
 
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -111,7 +111,6 @@ export default function MapPage({ isActive, overlayActive }: MapPageProps) {
   const [searchParams] = useSearchParams();
   const reduceMotion = useReducedMotion();
   const view: MapView = searchParams.get("view") === "photos" ? "photos" : "regions";
-  const selectedCountry = mapCountryForCode(searchParams.get("country"));
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo>();
@@ -123,17 +122,7 @@ export default function MapPage({ isActive, overlayActive }: MapPageProps) {
   const [mapState, setMapState] = useState<"ready" | "error">("ready");
   const [requestVersion, setRequestVersion] = useState(0);
 
-  const clusterItems = useMemo<PhotoClusterItem[]>(() => photos.flatMap((photo) => {
-    if (!photo.metadata.location) return [];
-    if (!photoBelongsToCountry(photo.metadata.city?.prefecture.country, selectedCountry)) return [];
-    return [{
-      id: photo.id,
-      datetime: photo.metadata.datetime,
-      coordinate: photo.metadata.location,
-      thumb_file: photo.thumb_file,
-      clustering_identifier: `photo:${photo.id}`,
-    }];
-  }), [photos, selectedCountry]);
+  const clusterItems = useMemo(() => buildPhotoMapItems(photos), [photos]);
 
   const photosById = useMemo(
     () => new Map(photos.map((photo) => [photo.id, photo])),
@@ -220,8 +209,10 @@ export default function MapPage({ isActive, overlayActive }: MapPageProps) {
       activeMap = new mapboxgl.Map({
         container: mapContainer,
         style: "mapbox://styles/mapbox/streets-v12",
-        center: selectedCountry.photoCenter ?? selectedCountry.center,
-        zoom: selectedCountry.photoZoom,
+        // Keep the requested Japan starting view, but show photos worldwide.
+        // A country selected in the regions view must not filter/reset this map.
+        center: [137.5, 36.2],
+        zoom: 5.5,
         attributionControl: false,
       });
       mapRef.current = activeMap;
@@ -256,7 +247,7 @@ export default function MapPage({ isActive, overlayActive }: MapPageProps) {
       activeMap?.remove();
       if (mapRef.current === activeMap) mapRef.current = null;
     };
-  }, [clusterItems, loadState, mapContainer, openPhoto, selectedCountry, tokenContext?.token?.token, view]);
+  }, [clusterItems, loadState, mapContainer, openPhoto, tokenContext?.token?.token, view]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -304,35 +295,6 @@ export default function MapPage({ isActive, overlayActive }: MapPageProps) {
           )}
         </motion.div>
       </AnimatePresence>
-      {view === "photos" ? (
-        <div className={`absolute inset-x-0 top-20 z-30 mx-auto w-full max-w-5xl pl-4 pr-4 transition-opacity duration-300 md:pl-68 ${
-          overlayActive ? "pointer-events-none opacity-0" : "opacity-100"
-        }`}>
-          <Select
-            aria-label="国家 / 地区"
-            items={MAP_COUNTRIES}
-            label="国家 / 地区"
-            selectedKeys={[selectedCountry.id.toString()]}
-            renderValue={() => selectedCountry.i18n["zh-CN"] ?? selectedCountry.name}
-            className="w-[20rem] max-w-full"
-            onChange={(event) => {
-              const next = MAP_COUNTRIES.find((country) => country.id.toString() === event.target.value);
-              if (!next || next.code === selectedCountry.code) return;
-              const params = new URLSearchParams(window.location.search);
-              params.set("view", "photos");
-              if (next.code === "JPN") params.delete("country");
-              else params.set("country", next.code);
-              navigate({ pathname: "/map", search: `?${params.toString()}` });
-            }}
-          >
-            {(country) => (
-              <SelectItem key={country.id} textValue={country.i18n["zh-CN"] ?? country.name}>
-                {country.i18n["zh-CN"] ?? country.name}
-              </SelectItem>
-            )}
-          </Select>
-        </div>
-      ) : null}
       <MapViewSwitcher view={view} isHidden={overlayActive} />
 
       {isWaiting ? (
