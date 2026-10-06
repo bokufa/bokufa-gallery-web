@@ -32,6 +32,7 @@ export interface Shuin {
 
 export interface PhotoClusterItem {
   id: number
+  datetime?: string
   coordinate?: Coordinate
   thumb_file: File
   clustering_identifier: string

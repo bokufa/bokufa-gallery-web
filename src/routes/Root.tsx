@@ -1,7 +1,7 @@
 import {
   Navbar, NavbarBrand, NavbarContent, NavbarMenu, NavbarMenuItem, NavbarMenuToggle, Spacer, Link, Divider
 } from "@heroui/react";
-import { TbHome, TbMap, TbNotebook, TbMovie } from "react-icons/tb";
+import { TbHome, TbMap, TbNotebook, TbMovie, TbBrandGithub, TbBrandInstagram, TbMail } from "react-icons/tb";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { MapToken, MapTokenContext, MapType } from "../contexts/MapToken";
@@ -17,6 +17,42 @@ const routes = [
   { route: '/map', text: '地图', icon: <TbMap size={22}/> },
   { route: '/blog', text: '後書き', icon: <TbNotebook size={22}/> },
 ];
+
+function ProjectContactLinks() {
+  return (
+    <div className="mt-2 flex items-center gap-3">
+      <a
+        href="https://www.instagram.com/inochiwa_39/"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="在 Instagram 查看 inochiwa_39"
+        title="Instagram"
+        className="inline-flex rounded py-1 text-default-400 transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+      >
+        <TbBrandInstagram size={16} aria-hidden="true" />
+      </a>
+      <a
+        href="https://github.com/bokufa/bokufa-gallery-web"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="在 GitHub 查看项目源码"
+        title="GitHub"
+        className="inline-flex rounded py-1 text-default-400 transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+      >
+        <TbBrandGithub size={16} aria-hidden="true" />
+      </a>
+      <a
+        href="mailto:2385780045@qq.com"
+        aria-label="发送邮件到 2385780045@qq.com"
+        title="2385780045@qq.com"
+        className="inline-flex rounded py-1 text-default-400 transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+      >
+        <TbMail size={16} aria-hidden="true" />
+      </a>
+    </div>
+  );
+}
+
 export default function Root() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [token, setToken] = useState<MapToken>()
@@ -113,6 +149,7 @@ export default function Root() {
             <Divider className='mt-4 mb-4'/>
             <div className='text-tiny text-default-400'>
               <p>© {new Date().getFullYear()} Bokufa's Gallery. All rights reserved.</p>
+              <ProjectContactLinks />
             </div>
           </NavbarMenu>
         </Navbar>
@@ -144,6 +181,7 @@ export default function Root() {
             <Divider className='mt-4 mb-4'/>
             <div className='text-tiny text-default-300 px-4'>
               <p>© {new Date().getFullYear()} Bokufa's Gallery. All rights reserved.</p>
+              <ProjectContactLinks />
             </div>
           </div>
           <div className='relative z-10 min-w-0' style={{ flex: '1 1 auto' }}>

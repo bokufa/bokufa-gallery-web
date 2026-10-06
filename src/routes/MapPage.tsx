@@ -128,6 +128,7 @@ export default function MapPage({ isActive, overlayActive }: MapPageProps) {
     if (!photoBelongsToCountry(photo.metadata.city?.prefecture.country, selectedCountry)) return [];
     return [{
       id: photo.id,
+      datetime: photo.metadata.datetime,
       coordinate: photo.metadata.location,
       thumb_file: photo.thumb_file,
       clustering_identifier: `photo:${photo.id}`,

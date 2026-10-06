@@ -81,6 +81,11 @@ function projectPhotos(items: PhotoClusterItem[]): ProjectedPhoto[] {
   return photos;
 }
 
+function captureTime(item: PhotoClusterItem): number {
+  const timestamp = Date.parse(item.datetime || "");
+  return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY;
+}
+
 // Pixel offsets laying `count` photos out as a compact flower: a single ring
 // with exact SPREAD_SPACING_PX neighbor gaps up to 6, then a center photo
 // surrounded by hexagonally-packed rings.
@@ -142,10 +147,13 @@ function computeClusters(photos: ProjectedPhoto[], zoom: number): ClusterPoint[]
       }
     }
 
-    // Sorted by id so members[0] is a deterministic cover photo: the minimum
-    // id is monotone under union, so merges inherit a child's cover instead of
-    // showing a bucket-scan-order random one.
-    members.sort((a, b) => a.item.id - b.item.id);
+    // Latest capture is the top print, regardless of upload order. Break ties
+    // by id so covers remain deterministic and merges inherit a child's cover.
+    members.sort((a, b) => {
+      const aTime = captureTime(a.item);
+      const bTime = captureTime(b.item);
+      return aTime === bTime ? b.item.id - a.item.id : aTime > bTime ? -1 : 1;
+    });
 
     let sx = 0, sy = 0;
     for (const m of members) { sx += m.x; sy += m.y; }
