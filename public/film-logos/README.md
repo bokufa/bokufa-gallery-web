@@ -1,21 +1,24 @@
 # Film identification images
 
-`fujicolor-c200.jpg` is the complete, unchanged FUJIFILM / FUJICOLOR C200
-packaging wordmark image selected by the user. The card preserves the entire
-image, its original colors and aspect ratio; it does not crop to the C200 badge.
+These complete 2500 × 2500 packaging images were supplied by the site owner on
+2026-10-07 and copied without cropping or recoloring:
 
-Source: https://www.photonfolly.com/analog/examples/Fujifilm_Fujicolor_C200/Fujifilm_Fujicolor_C200_logo.jpg
-Source website: https://www.photonfolly.com/index.html
+- `kodak-portra-160.jpg`
+- `kodak-portra-400.jpg`
+- `fujicolor-c200.jpg`
+- `fujicolor-100.jpg`
+- `fujichrome-provia-100f.jpg`
 
-The source identifies manufacturer trademarks as belonging to their respective
-owners and presents them for editorial identification. This personal gallery
-uses the image to identify film used for photographs, without affiliation or
-endorsement. It is a packaging image, not an official transparent SVG asset.
+They identify the film stock used for a photograph. Manufacturer names and
+packaging remain the property of their respective owners; their inclusion in
+this personal gallery does not imply affiliation or endorsement.
 
-The stock image follows the camera model in the card header, separated by `｜`.
-Its displayed height is capped at the metadata line's 20px height, with automatic
-width and vertical centering, so the full image cannot make the row taller.
-The scanner model follows the lens on the next row, also separated by `｜`, using
-the same font size as lens information. Neither row adds field-name prefixes.
-The scanner name remains a separate data field. Other stocks retain text rather
-than being misidentified as C200; failed image requests also fall back to stock text.
+Each original also has a 160 × 160 WebP display copy. Cards load this small
+copy instead of downloading a 2500 × 2500 JPEG for a 20px-tall icon; the full
+originals remain available for future layouts.
+
+The matching image follows the camera model in the card header, separated by
+`｜`. Its displayed height is capped at the metadata line's 20px height, with
+automatic width and vertical centering. Unknown stocks and failed image requests
+fall back to the stock name as text. The scanner remains a separate data field
+and follows the lens on the next row.

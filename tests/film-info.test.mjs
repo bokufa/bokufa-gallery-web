@@ -14,11 +14,11 @@ const filmInfoUrl = `data:text/javascript;base64,${Buffer.from(source).toString(
 const { default: FilmInfo } = await import(filmInfoUrl);
 const render = film => renderToStaticMarkup(React.createElement(FilmInfo, { stock: film.stock }));
 
-test("C200 displays the complete selected image after a separator without field labels", () => {
+test("C200 displays the new complete square image after a separator without field labels", () => {
   const html = render({ stock: "FUJI C200", scanner: "FUJI SP-3000" });
-  assert.match(html, /src="\/film-logos\/fujicolor-c200\.jpg"/);
-  assert.match(html, /alt="FUJIFILM FUJICOLOR C200"/);
-  assert.match(html, /width="817" height="459"/);
+  assert.match(html, /src="\/film-logos\/fujicolor-c200\.webp"/);
+  assert.match(html, /alt="FUJIFILM Fujicolor C200"/);
+  assert.match(html, /width="160" height="160"/);
   assert.match(html, /object-contain/);
   assert(!html.includes("object-cover"));
   assert(html.includes("｜"));
@@ -27,9 +27,16 @@ test("C200 displays the complete selected image after a separator without field 
   assert(!html.includes("FUJI SP-3000"));
 });
 
-test("brand aliases are recognized but other film stocks are never mislabeled", () => {
-  for (const stock of ["FUJIFILM C200", "FUJICOLOR C200", "fuji c200"]) assert.match(render({ stock }), /fujicolor-c200\.jpg/);
-  for (const stock of ["FUJI 200", "FUJI C400", "KODAK GOLD 200"]) {
+test("all supplied stocks and their common aliases resolve to the right image", () => {
+  for (const stock of ["FUJIFILM C200", "FUJICOLOR C200", "fuji c200"]) assert.match(render({ stock }), /fujicolor-c200\.webp/);
+  for (const stock of ["Kodak Portra 160", "PORTRA160"]) assert.match(render({ stock }), /kodak-portra-160\.webp/);
+  for (const stock of ["Kodak Portra 400", "PORTRA 400"]) assert.match(render({ stock }), /kodak-portra-400\.webp/);
+  for (const stock of ["FUJI COLOR 100", "FUJICOLOR100", "Fujifilm 100"]) assert.match(render({ stock }), /fujicolor-100\.webp/);
+  for (const stock of ["FUJI PROVIA 100F", "FUJICHROME PROVIA 100F", "Provia100F"]) assert.match(render({ stock }), /fujichrome-provia-100f\.webp/);
+});
+
+test("unknown film stocks are never mislabeled", () => {
+  for (const stock of ["FUJI 200", "FUJI C400", "KODAK GOLD 200", "PROVIA 400F"]) {
     const html = render({ stock, scanner: "FUJI SP-3000" });
     assert(!html.includes("<img"));
     assert(html.includes(stock));
@@ -55,13 +62,21 @@ test("missing stock does not render a stock label or dangling separator", () => 
   assert.equal(html, "");
 });
 
-test("the bundled image exactly matches the full preview the user selected", async () => {
-  const data = await readFile(new URL("../public/film-logos/fujicolor-c200.jpg", import.meta.url));
+test("all bundled images exactly match the complete files supplied by the user", async () => {
   const { createHash } = await import("node:crypto");
-  const hash = createHash("sha256").update(data).digest("hex");
-  // Dimensions are verified above; a stable hash guards against later crops.
-  assert.equal(data.length, 107524);
-  assert.equal(hash, "b333af32fa2fbf69464b74573cd8ca548a5184489f1decc8d2934b4b25f7f19c");
+  const assets = {
+    "kodak-portra-160.jpg": [774739, "8af72bbbc76afc6741bfba82d3d7e4b0768aaef3aa0ac430d57ef81971df7d2f"],
+    "kodak-portra-400.jpg": [779152, "47d84ee83e57156c2d671f54080f4fd6dd03b02198667ab2cdf1825f8979c43a"],
+    "fujicolor-c200.jpg": [1877178, "69a6d7818db551f6a4a35cfa57d16a5624e5a2387eedc5f900c6585642cc17e1"],
+    "fujicolor-100.jpg": [1169551, "11a343e144b3c98daa1367aec29df57ae265ba5491f9198c62645f13c39b7bf3"],
+    "fujichrome-provia-100f.jpg": [923048, "755cb124832c13b518640ee9b7ae58ca28c4df01b3197beade828080e590a4a0"],
+  };
+
+  for (const [name, [size, expectedHash]] of Object.entries(assets)) {
+    const data = await readFile(new URL(`../public/film-logos/${name}`, import.meta.url));
+    assert.equal(data.length, size, `${name} keeps its original byte length`);
+    assert.equal(createHash("sha256").update(data).digest("hex"), expectedHash, `${name} is unchanged`);
+  }
 });
 
 async function compile(path, replacements = {}) {
@@ -95,13 +110,13 @@ test("the actual photo card shows Nikon, the full C200 image, lens and scanner f
   ]) {
     const photo = { metadata: { ...metadata, lens: { manufacture: { name: "Nikon" }, model: "AI Nikkor 50mm f/1.4S" }, photographic_sensitivity: 200, f_number: 1.4, exposure_time_rat: "1/1000", focal_length: 50 } };
     const html = renderToStaticMarkup(React.createElement(PhotoMetaCard, { photo, loading: false }));
-    for (const text of ["/camera-logos/nikon.svg", "/film-logos/fujicolor-c200.jpg", "AI Nikkor 50mm f/1.4S", "FUJI SP-3000", "ISO 200"]) assert(html.includes(text));
+    for (const text of ["/camera-logos/nikon.svg", "/film-logos/fujicolor-c200.webp", "AI Nikkor 50mm f/1.4S", "FUJI SP-3000", "ISO 200"]) assert(html.includes(text));
     assert(!html.includes("胶片"));
     assert(!html.includes("扫描"));
     const header = html.indexOf('data-photo-meta="camera"');
     const body = html.indexOf('data-photo-meta="lens"');
     const footer = html.indexOf('data-photo-meta="exposure"');
-    const stock = html.indexOf('/film-logos/fujicolor-c200.jpg');
+    const stock = html.indexOf('/film-logos/fujicolor-c200.webp');
     const lens = html.indexOf('AI Nikkor 50mm f/1.4S');
     const scanner = html.indexOf('FUJI SP-3000');
     assert(header >= 0 && header < stock && stock < body, "stock belongs after the camera in the header");
