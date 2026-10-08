@@ -32,7 +32,7 @@ test("all supplied stocks and their common aliases resolve to the right image", 
   for (const stock of ["Kodak Portra 160", "PORTRA160"]) assert.match(render({ stock }), /kodak-portra-160\.webp/);
   for (const stock of ["Kodak Portra 400", "PORTRA 400"]) assert.match(render({ stock }), /kodak-portra-400\.webp/);
   for (const stock of ["FUJI COLOR 100", "FUJICOLOR100", "Fujifilm 100"]) assert.match(render({ stock }), /fujicolor-100\.webp/);
-  for (const stock of ["FUJI PROVIA 100F", "FUJICHROME PROVIA 100F", "Provia100F"]) assert.match(render({ stock }), /fujichrome-provia-100f\.webp/);
+  for (const stock of ["FUJI PROVIA 100F", "FUJICHROME PROVIA 100F", "Provia100F", "FUJI RDP3", "RDP III"]) assert.match(render({ stock }), /fujichrome-provia-100f\.webp/);
 });
 
 test("unknown film stocks are never mislabeled", () => {
@@ -132,4 +132,26 @@ test("scanner-only metadata uses normal lens-row type and preserves a single sep
   assert(!html.includes("/film-logos/"));
   assert(!html.includes("text-xs"));
   assert.equal((html.match(/｜/g) || []).length, 1);
+});
+
+test("analog metadata without a known lens omits invented lens and focal-length values", () => {
+  const photo = {
+    metadata: {
+      camera: { manufacture: { name: "Hasselblad" }, model: "500C" },
+      film: { stock: "FUJI RDP3" },
+      lens: null,
+      photographic_sensitivity: 100,
+      f_number: 5.6,
+      exposure_time_rat: "1/30",
+      focal_length: null,
+    },
+  };
+  const html = renderToStaticMarkup(React.createElement(PhotoMetaCard, { photo, loading: false }));
+  for (const text of ["Hasselblad", "500C", "/film-logos/fujichrome-provia-100f.webp", "ISO 100", "ƒ5.6", "1/30 s"]) {
+    assert(html.includes(text));
+  }
+  assert(!html.includes("unknown_lens"));
+  assert(!html.includes("undefined"));
+  assert(!html.includes("null mm"));
+  assert(!html.includes('data-photo-meta="lens"'));
 });

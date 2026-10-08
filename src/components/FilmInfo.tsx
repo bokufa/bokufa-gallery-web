@@ -51,7 +51,7 @@ function filmLogoKey(stock: string) {
   if (/^(?:KODAK)?PORTRA400$/.test(compact)) return "PORTRA400";
   if (/^(?:FUJI|FUJIFILM|FUJICOLOR|FUJICOLORFILM)C200$/.test(compact)) return "C200";
   if (/^(?:FUJI|FUJIFILM|FUJICOLOR|FUJICOLORFILM)100$/.test(compact)) return "FUJICOLOR100";
-  if (/^(?:FUJI|FUJIFILM|FUJICHROME)?PROVIA100F$/.test(compact)) return "PROVIA100F";
+  if (/^(?:(?:FUJI|FUJIFILM|FUJICHROME)?PROVIA100F|(?:FUJI|FUJIFILM)?RDP(?:III|3))$/.test(compact)) return "PROVIA100F";
   return undefined;
 }
 
