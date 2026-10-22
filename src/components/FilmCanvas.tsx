@@ -30,6 +30,7 @@ import HdrLightPanel from "./HdrLightPanel";
 import FloatingControls, { floatingControlSurface } from "./FloatingControls";
 
 const initialView: CanvasView = { x: 0, y: 0, scale: 1 };
+const FILM_COMPACT_SCALE_THRESHOLD = 0.5;
 
 export default function FilmCanvas({ children }: { children: ReactNode }) {
   const { t } = useLanguage();
@@ -43,6 +44,7 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
   const [scale, setScale] = useState(100);
   const [minimumPercent, setMinimumPercent] = useState(MIN_FILM_SCALE * 100);
   const [isLoupeOpen, setIsLoupeOpen] = useState(false);
+  const [compact, setCompact] = useState(false);
   const [detailIds, setDetailIds] = useState<ReadonlySet<number>>(new Set());
   const detailIdsRef = useRef<ReadonlySet<number>>(new Set());
   const qualityChangedRef = useRef<() => void>(() => undefined);
@@ -57,7 +59,29 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
     let frame = 0;
     let qualityFrame = 0;
     let releaseFrame = 0;
+    let motionTimer: ReturnType<typeof setTimeout> | undefined;
+    let moving = false;
     let viewportWidth = viewport.clientWidth;
+
+    const beginMotion = () => {
+      clearTimeout(motionTimer);
+      if (moving) return;
+      moving = true;
+      viewport.dataset.filmMoving = "true";
+    };
+    const finishMotion = () => {
+      clearTimeout(motionTimer);
+      if (!moving) return;
+      moving = false;
+      delete viewport.dataset.filmMoving;
+      setCompact(viewRef.current.scale < FILM_COMPACT_SCALE_THRESHOLD);
+      viewport.dispatchEvent(new Event("filmcanvasidle"));
+      qualityChangedRef.current();
+    };
+    const settleMotion = () => {
+      clearTimeout(motionTimer);
+      motionTimer = setTimeout(finishMotion, 140);
+    };
 
     const commitDetailIds = (ids: ReadonlySet<number>) => {
       if (
@@ -74,6 +98,7 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
       qualityFrame = 0;
       const view = viewRef.current;
 
+      if (moving) return;
       // Below the threshold the current cache is deliberately left untouched.
       if (!usesFilmDetail(view.scale)) return;
       const centerX = viewport.clientWidth / 2;
@@ -176,6 +201,7 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
         sceneChangedRef.current();
         queueDetailQuality();
         setScale(Math.round(next.scale * 100));
+        if (!moving) setCompact(next.scale < FILM_COMPACT_SCALE_THRESHOLD);
         setMinimumPercent(
           Math.round(
             minimumFilmScale(
@@ -237,6 +263,7 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
       )
         return;
       suppressClick = true;
+      beginMotion();
       viewport.dataset.dragging = "true";
       viewport.setPointerCapture(event.pointerId);
       event.preventDefault();
@@ -281,7 +308,10 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
       pointers.delete(event.pointerId);
       if (viewport.hasPointerCapture(event.pointerId))
         viewport.releasePointerCapture(event.pointerId);
-      if (!pointers.size) delete viewport.dataset.dragging;
+      if (!pointers.size) {
+        delete viewport.dataset.dragging;
+        finishMotion();
+      }
     };
     const lostCapture = (event: PointerEvent) => {
       if (event.target === viewport) pointerEnd(event);
@@ -293,6 +323,8 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
     };
     const wheel = (event: WheelEvent) => {
       event.preventDefault();
+      beginMotion();
+      settleMotion();
       const unit =
         event.deltaMode === 1
           ? 16
@@ -323,6 +355,8 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
       }
     };
     const control = (action: "in" | "out" | "reset") => {
+      beginMotion();
+      settleMotion();
       if (action === "reset") applyView(defaultView());
       else
         zoomAt(
@@ -378,6 +412,7 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
       cancelAnimationFrame(frame);
       cancelAnimationFrame(qualityFrame);
       cancelAnimationFrame(releaseFrame);
+      clearTimeout(motionTimer);
       resize.disconnect();
       viewport.removeEventListener("pointerdown", pointerDown);
       viewport.removeEventListener("pointermove", pointerMove);
@@ -400,7 +435,7 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
   }, [hdrEnabled]);
 
   return (
-    <FilmQualityProvider detailIds={detailIds}>
+    <FilmQualityProvider compact={compact} detailIds={detailIds}>
       <div
         className="film-canvas"
         data-hdr-enabled={hdrEnabled}

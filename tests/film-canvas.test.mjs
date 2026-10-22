@@ -194,6 +194,9 @@ test("canvas gestures suppress drag clicks, preserve normal clicks, support pinc
     clientWidth: 1000,
     clientHeight: 700,
     dataset: {},
+    dispatchEvent(event) {
+      listeners.get(event.type)?.(event);
+    },
     getBoundingClientRect: () => ({ left: 0, top: 64 }),
     addEventListener: (name, listener) => listeners.set(name, listener),
     removeEventListener: (name) => listeners.delete(name),
@@ -375,7 +378,9 @@ test("canvas gestures suppress drag clicks, preserve normal clicks, support pinc
       content.style.transform,
       "translate3d(-200px, 0px, 0) scale(1)",
     );
+    assert.equal(viewport.dataset.filmMoving, "true");
     emit("pointerup");
+    assert.equal(viewport.dataset.filmMoving, undefined);
     assert.equal(emit("click").stopped, true);
     emit("pointerdown");
     emit("pointerup");

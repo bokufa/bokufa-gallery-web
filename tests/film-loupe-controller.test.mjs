@@ -6,8 +6,9 @@ import ts from 'typescript';
 const url = text => `data:text/javascript;base64,${Buffer.from(text).toString('base64')}`;
 const compile = text => ts.transpileModule(text, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
 const math = url(compile(await readFile(new URL('../src/utils/filmLoupe.ts', import.meta.url), 'utf8')));
+const scale = url(compile(await readFile(new URL('../src/utils/filmScale.ts', import.meta.url), 'utf8')));
 const sources = url(compile(await readFile(new URL('../src/utils/photoSources.ts', import.meta.url), 'utf8')));
-const controllerSource = compile(await readFile(new URL('../src/utils/filmLoupeController.ts', import.meta.url), 'utf8')).replace('"./filmLoupe"', JSON.stringify(math)).replace('"./photoSources"', JSON.stringify(sources));
+const controllerSource = compile(await readFile(new URL('../src/utils/filmLoupeController.ts', import.meta.url), 'utf8')).replace('"./filmLoupe"', JSON.stringify(math)).replace('"./filmScale"', JSON.stringify(scale)).replace('"./photoSources"', JSON.stringify(sources));
 const { mountFilmLoupe } = await import(url(controllerSource));
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
@@ -17,6 +18,7 @@ function fixture(t, count = 100, load) {
   const frames = new Map();
   const timers = new Map();
   const calls = [];
+  const tiers = [];
   let id = 0;
   let mutation;
   let resize;
@@ -28,7 +30,8 @@ function fixture(t, count = 100, load) {
       this.childNodes = [];
       this.listeners = new Map();
       this.captures = new Set();
-      this.style = new Proxy({}, { set: (target, name, value) => {
+      const style = { setProperty(name, value) { this[name] = value; } };
+      this.style = new Proxy(style, { set: (target, name, value) => {
         if (this.outer && ['left', 'top', 'width', 'height'].includes(name)) metrics.frameLayoutWrites++;
         target[name] = value; return true;
       } });
@@ -103,7 +106,7 @@ function fixture(t, count = 100, load) {
     const window = new Element('span', 'film-image-window');
     window.rect = { left: left + 15, top: 215, width: 270, height: 270 };
     const image = new Element('img');
-    Object.assign(image.dataset, { bufferActive: 'true', filmPhotoId: String(i + 1), filmThumbSrc: `thumb-${i + 1}`, filmLargeSrc: `large-${i + 1}`, filmHdrSrc: `hdr-${i + 1}`, filmHdrEnabled: 'false' });
+    Object.assign(image.dataset, { bufferActive: 'true', filmPhotoId: String(i + 1), filmThumbSrc: `thumb-${i + 1}`, filmPreviewSrc: `preview-${i + 1}`, filmTableSrc: `table-${i + 1}`, filmLoupeSrc: `large-${i + 1}`, filmLargeSrc: `large-${i + 1}`, filmHdrSrc: `hdr-${i + 1}`, filmHdrEnabled: 'false' });
     image.src = `medium-${i + 1}`;
     const label = new Element('span', 'film-edge-label');
     label.setAttribute('data-edge-text', 'FUJI'); label.setAttribute('data-edge-hdr-ready', 'false');
@@ -124,14 +127,18 @@ function fixture(t, count = 100, load) {
   mock('MutationObserver', class { constructor(callback) { mutation = callback; } observe() {} disconnect() {} });
   mock('ResizeObserver', class { constructor(callback) { resize = callback; } observe() {} disconnect() {} });
   const controller = mountFilmLoupe({ viewport, source, frame, glass, getView: () => view,
-    loadDetail: image => { calls.push(image.dataset.filmPhotoId); return load ? load(image) : Promise.resolve(image.dataset.filmHdrEnabled === 'true' ? image.dataset.filmHdrSrc : image.dataset.filmLargeSrc); },
+    loadDetail: (image, tier) => {
+      calls.push(image.dataset.filmPhotoId); tiers.push(tier);
+      if (load) return load(image, tier);
+      return Promise.resolve(tier === 'preview' ? image.dataset.filmPreviewSrc : tier === 'table' ? image.dataset.filmTableSrc : image.dataset.filmHdrEnabled === 'true' ? image.dataset.filmHdrSrc : image.dataset.filmLargeSrc);
+    },
     onClose() {}, onMagnification() {},
   });
   t.after(() => { controller.destroy(); for (const [name, value] of globals) globalThis[name] = value; });
   const flush = queue => { const callbacks = [...queue.values()]; queue.clear(); callbacks.forEach(callback => callback()); };
   const emit = (name, x = 500, y = 350) => glass.listeners.get(name)({ button: 0, pointerId: 1, clientX: x, clientY: y, preventDefault() {} });
   const mirror = glass.childNodes[0];
-  return { metrics, view, calls, controller, viewport, frame, glass, source, mirror, frames, timers, emit, paint: () => flush(frames), idle: () => flush(timers), mutate: () => mutation(), resize: () => resize() };
+  return { metrics, view, calls, tiers, controller, viewport, frame, glass, source, mirror, frames, timers, emit, paint: () => flush(frames), idle: () => flush(timers), mutate: () => mutation(), resize: () => resize() };
 }
 
 test('100 drag frames perform zero layout reads, selector scans, decodes or detail requests', t => {
@@ -145,6 +152,8 @@ test('100 drag frames perform zero layout reads, selector scans, decodes or deta
   assert.equal(f.metrics.frameLayoutWrites, 0);
   assert.equal(f.calls.length, 0);
   assert.match(f.frame.style.transform, /translate3d\(610px, 210px, 0\)/);
+  assert(!f.mirror.style.transform.includes('scale('), 'the loupe must not upscale a pre-rasterized scene');
+  assert(Number.parseFloat(f.mirror.style['--film-mm']) > 10, 'the cloned film is laid out at its final magnified size');
   assert(f.mirror.childNodes.filter(node => node.style.display !== 'none').length <= 2);
 });
 
@@ -154,6 +163,7 @@ test('release upgrades only the final sample and hidden frames release their HDR
   f.emit('pointerup', 750); f.idle();
   await tick(); f.paint(); f.paint();
   assert.deepEqual(f.calls, ['2']);
+  assert.deepEqual(f.tiers, ['loupe']);
   const second = f.mirror.childNodes[1];
   const layers = second.querySelectorAll('.film-image-window img');
   assert.equal(layers.length, 2, 'old image remains opaque throughout the dissolve');
@@ -205,7 +215,8 @@ test('at 14% the loupe upgrades at most two sampled films and leaves all table p
   f.paint(); f.idle(); await tick(); f.paint(); f.paint(); f.idle();
   assert(f.mirror.childNodes.filter(frame => frame.style.display !== 'none').length > 2);
   assert.equal(f.calls.length, 2, 'the sample may contain many films, but only two get detail requests');
-  const high = f.mirror.childNodes.flatMap(frame => frame.querySelectorAll('.film-image-window img')).filter(image => image.src.startsWith('large-'));
+  assert.deepEqual(f.tiers, ['preview', 'preview'], 'tiny rendered frames must not decode 4K sources');
+  const high = f.mirror.childNodes.flatMap(frame => frame.querySelectorAll('.film-image-window img')).filter(image => image.src.startsWith('preview-'));
   assert.equal(high.length, 2);
   f.source.childNodes.forEach((frame, i) => assert.equal(frame.querySelector('.film-image-window img[data-buffer-active="true"]').src, `medium-${i + 1}`));
 });

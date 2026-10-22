@@ -6,9 +6,11 @@ import {
   loupeSampleCircle,
   loupeSceneView,
 } from "./filmLoupe";
+import { FILM_PIXELS_PER_MM } from "./filmScale";
 import { decodePhotoElement, PHOTO_LOAD_TIMEOUT_MS } from "./photoSources";
 
 export const MAX_LOUPE_DETAIL_IMAGES = 2;
+export type FilmLoupeTier = "preview" | "table" | "loupe";
 
 type Rect = { left: number; top: number; right: number; bottom: number };
 type Pending = {
@@ -45,7 +47,10 @@ interface Options {
   frame: HTMLElement;
   glass: HTMLButtonElement;
   getView: () => CanvasView;
-  loadDetail: (image: HTMLImageElement) => Promise<string | undefined>;
+  loadDetail: (
+    image: HTMLImageElement,
+    tier: FilmLoupeTier,
+  ) => Promise<string | undefined>;
   onClose: () => void;
   onMagnification: (zoom: number) => void;
 }
@@ -65,6 +70,8 @@ const identity = (image: HTMLImageElement) =>
     image.dataset.filmHdrSrc,
     image.dataset.filmLargeSrc,
     image.dataset.filmLoupeSrc,
+    image.dataset.filmPreviewSrc,
+    image.dataset.filmTableSrc,
   ].join(":");
 
 export function mountFilmLoupe({
@@ -285,11 +292,27 @@ export function mountFilmLoupe({
         upgrade(entry, entry.readyUrl);
         entry.readyUrl = undefined;
       }
-      if (entry.requested === entry.identity) continue;
+      const requiredEdge =
+        Math.max(
+          entry.imageBounds.right - entry.imageBounds.left,
+          entry.imageBounds.bottom - entry.imageBounds.top,
+        ) *
+        getView().scale *
+        zoom *
+        (window.devicePixelRatio || 1);
+      const tier: FilmLoupeTier =
+        requiredEdge <= 640
+          ? "preview"
+          : requiredEdge <= 1600
+            ? "table"
+            : "loupe";
+      const requestKey = `${entry.identity}:${tier}`;
+
+      if (entry.requested === requestKey) continue;
       const version = entry.version;
 
-      entry.requested = entry.identity;
-      void loadDetail(entry.original)
+      entry.requested = requestKey;
+      void loadDetail(entry.original, tier)
         .then((url) => {
           if (
             !active ||
@@ -344,8 +367,8 @@ export function mountFilmLoupe({
         right: left + imageBox.width / scale,
         bottom: top + imageBox.height / scale,
       };
-      entry.frame.style.left = `${x}px`;
-      entry.frame.style.top = `${y}px`;
+      entry.frame.style.left = "0px";
+      entry.frame.style.top = "0px";
     }
   };
   const refreshSources = () => {
@@ -491,7 +514,14 @@ export function mountFilmLoupe({
       zoom,
     );
 
-    mirror.style.transform = `translate3d(${lens.x}px, ${lens.y}px, 0) scale(${lens.scale})`;
+    // Lay out the cloned film at its final magnified dimensions instead of
+    // scaling an already-rasterized small scene. Mobile WebKit otherwise tends
+    // to enlarge the low-resolution compositor texture despite a 4K source.
+    mirror.style.setProperty(
+      "--film-mm",
+      `${FILM_PIXELS_PER_MM * lens.scale}px`,
+    );
+    mirror.style.transform = `translate3d(${lens.x}px, ${lens.y}px, 0)`;
     const circle = sample();
     let selectionChanged = false;
 
@@ -510,6 +540,10 @@ export function mountFilmLoupe({
       if (!visible) {
         releaseDetail(entry);
       }
+    }
+    for (const entry of entries) {
+      if (!entry.visible) continue;
+      entry.frame.style.transform = `translate3d(${entry.bounds.left * lens.scale}px, ${entry.bounds.top * lens.scale}px, 0)`;
     }
     // At very low canvas zoom the glass can contain many frames. Upgrade only
     // the two closest to its center; every other frame keeps its fixed preview.

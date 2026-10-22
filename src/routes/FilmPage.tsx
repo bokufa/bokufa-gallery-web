@@ -23,7 +23,10 @@ import {
   filmSdrPreview,
   filmTableDetailFile,
 } from "../utils/filmPhotoSources";
-import { useFilmDetailQuality } from "../contexts/FilmQualityContext";
+import {
+  useFilmCompactMode,
+  useFilmDetailQuality,
+} from "../contexts/FilmQualityContext";
 
 const loadedFilmImageIds = new Set<number>();
 const loadedFilmPreviewUrls = new Set<string>();
@@ -42,6 +45,7 @@ function FilmDetailOverlay({
   const decodeRef = useRef<AbortController>();
   const [ready, setReady] = useState(false);
   const loupe = filmLoupeDetailFile(photo, hdr);
+  const preview = filmPreviewFile(photo, hdr);
 
   useEffect(() => {
     setReady(false);
@@ -64,6 +68,8 @@ function FilmDetailOverlay({
         data-film-large-src={photo.large_file?.url}
         data-film-loupe-src={loupe?.url}
         data-film-photo-id={photo.id}
+        data-film-preview-src={preview.url}
+        data-film-table-src={file.url}
         data-film-thumb-src={photo.thumb_file.url}
         data-hdr-active={hdr}
         decoding="async"
@@ -104,6 +110,7 @@ function FilmFrame({
   const frameRef = useRef<HTMLButtonElement>(null);
   const { t } = useLanguage();
   const { enabled: hdrEnabled } = useHdr();
+  const compact = useFilmCompactMode();
   const detailSelected = useFilmDetailQuality(photo.id);
   const visible = useFilmVisibility(frameRef);
   const [imageLoaded, setImageLoaded] = useState(() =>
@@ -129,7 +136,7 @@ function FilmFrame({
   const loupeFile = filmLoupeDetailFile(photo, hdrEnabled);
 
   useEffect(() => {
-    if (!visible) {
+    if (!visible || compact) {
       setPreviewUrl(photo.thumb_file.url);
 
       return;
@@ -158,6 +165,7 @@ function FilmFrame({
     photo.hdr_preview_file,
     photo.thumb_file.url,
     hdrEnabled,
+    compact,
     visible,
   ]);
 
@@ -188,11 +196,11 @@ function FilmFrame({
       {format === "135" ? <FilmStripBase portrait={portrait} /> : null}
       {format === "120" ? (
         <span aria-hidden="true" className="film-fuji-mark">
-          <FilmEdgeMark active={visible} text="FUJI" />
+          <FilmEdgeMark active={visible && !compact} text="FUJI" />
         </span>
       ) : null}
       <span aria-hidden="true" className="film-edge-copy film-edge-copy-start">
-        <FilmEdgeMark active={visible} text={edgeLabel} />
+        <FilmEdgeMark active={visible && !compact} text={edgeLabel} />
       </span>
       <span
         className={`photo-image-shell film-image-window ${imageLoaded ? "is-loaded" : ""}`}
@@ -205,6 +213,8 @@ function FilmFrame({
           data-film-large-src={photo.large_file?.url}
           data-film-loupe-src={loupeFile?.url}
           data-film-photo-id={photo.id}
+          data-film-preview-src={filmPreviewFile(photo, hdrEnabled).url}
+          data-film-table-src={detailFile?.url}
           data-film-thumb-src={photo.thumb_file.url}
           decoding="async"
           draggable={false}
@@ -212,18 +222,18 @@ function FilmFrame({
           hdrSrc={photo.hdr_preview_file?.url}
           loading="eager"
           src={previewUrl}
-          suspend={!visible}
+          suspend={!visible || compact}
           onLoad={() => {
             loadedFilmImageIds.add(photo.id);
             setImageLoaded(true);
           }}
         />
-        {visible && detailSelected && detailFile ? (
+        {visible && !compact && detailSelected && detailFile ? (
           <FilmDetailOverlay file={detailFile} hdr={hdrEnabled} photo={photo} />
         ) : null}
       </span>
       <span aria-hidden="true" className="film-edge-copy film-edge-copy-end">
-        <FilmEdgeMark active={visible} text={`▶ ${edgeLabel}`} />
+        <FilmEdgeMark active={visible && !compact} text={`▶ ${edgeLabel}`} />
       </span>
     </button>
   );

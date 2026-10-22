@@ -33,7 +33,8 @@ test("film page receives the LED table and the same floating chrome as the map",
   assert.match(filmPage, /preloadPhotoSource\(preview\.url, 0\)/);
   assert.match(filmPage, /useFilmVisibility\(frameRef\)/);
   assert.match(filmPage, /filmPreviewFile\(photo, hdrEnabled\)/);
-  assert.match(filmPage, /suspend=\{!visible\}/);
+  assert.match(filmPage, /suspend=\{!visible \|\| compact\}/);
+  assert.match(filmPage, /visible && !compact && detailSelected/);
   assert.match(filmPage, /setPreviewUrl\(preview\.url\)/);
   assert(!filmPage.includes('preloadPhotoSource(photo.hdr_file'), 'board must never preload the full HDR source');
 });

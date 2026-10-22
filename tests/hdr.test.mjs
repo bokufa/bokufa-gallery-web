@@ -494,7 +494,12 @@ test('film visibility keeps observing pan/zoom and cleans up on route exit', t =
   globalThis.window = { IntersectionObserver: Observer };
   const render = harness(t, useFilmVisibility);
   t.after(() => { globalThis.window = previousWindow; globalThis.IntersectionObserver = previousObserver; });
-  const viewport = {};
+  const listeners = new Map();
+  const viewport = {
+    dataset: {},
+    addEventListener: (name, listener) => listeners.set(name, listener),
+    removeEventListener: name => listeners.delete(name),
+  };
   const ref = { current: { closest: () => viewport } };
   assert.equal(render(ref), false);
   assert.equal(observed, ref.current);
@@ -502,7 +507,11 @@ test('film visibility keeps observing pan/zoom and cleans up on route exit', t =
   assert.equal(options.rootMargin, '0px');
   callback([{ isIntersecting: true }]);
   assert.equal(render(ref), true);
+  viewport.dataset.filmMoving = 'true';
   callback([{ isIntersecting: false }]);
+  assert.equal(render(ref), true, 'pinching keeps the current source stable');
+  delete viewport.dataset.filmMoving;
+  listeners.get('filmcanvasidle')();
   assert.equal(render(ref), false);
   callback([{ isIntersecting: true }]);
   assert.equal(render(ref), true);
