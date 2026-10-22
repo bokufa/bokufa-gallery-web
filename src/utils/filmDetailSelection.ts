@@ -1,4 +1,5 @@
 export const FILM_DETAIL_SCALE_THRESHOLD = 2;
+export const FILM_DETAIL_PERCENT_THRESHOLD = 200;
 export const MAX_FILM_DETAIL_IMAGES = 3;
 
 export interface FilmDetailCandidate {
@@ -11,6 +12,12 @@ export interface FilmDetailPlan {
   waitForRelease: boolean;
 }
 
+// The toolbar displays a rounded percentage. Use the same value for the
+// quality threshold so a visible 200% never remains on the preview tier.
+export function usesFilmDetail(scale: number) {
+  return Math.round(scale * 100) >= FILM_DETAIL_PERCENT_THRESHOLD;
+}
+
 // Detail images are sticky: zooming out does not churn decoded images. At high
 // zoom only a missing, nearer candidate can evict an older detail texture.
 export function planFilmDetailSelection(
@@ -18,7 +25,7 @@ export function planFilmDetailSelection(
   candidates: readonly FilmDetailCandidate[],
   scale: number,
 ): FilmDetailPlan {
-  if (scale < FILM_DETAIL_SCALE_THRESHOLD)
+  if (!usesFilmDetail(scale))
     return { ids: new Set(current), waitForRelease: false };
 
   const preferred = [...candidates]

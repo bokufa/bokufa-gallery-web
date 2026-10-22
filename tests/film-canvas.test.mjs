@@ -310,6 +310,12 @@ test("canvas gestures suppress drag clicks, preserve normal clicks, support pinc
         ),
       )
       .replace(
+        '"./FilmBoardSurface"',
+        JSON.stringify(
+          dataUrl("export default function FilmBoardSurface() { return null; }"),
+        ),
+      )
+      .replace(
         '"./HdrToggle"',
         JSON.stringify(
           dataUrl("export default function HdrToggle() { return null; }"),

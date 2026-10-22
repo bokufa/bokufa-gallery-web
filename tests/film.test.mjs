@@ -76,6 +76,19 @@ test("filters before pagination, retains order and reuses the API cache", async 
   assert.deepEqual(state.calls[0].config.params, { page_size: 2_000 });
 });
 
+test("film pages can refresh cached metadata to discover new quality tiers", async () => {
+  const { service, state } = await createService(mixedPhotos);
+  await service.fetchPhotos({ film_only: true, page_size: 20 });
+  state.photos = [photo(6, "Nikon FM", "FUJI RDP III")];
+  const refreshed = await service.fetchPhotos(
+    { film_only: true, page_size: 20 },
+    undefined,
+    { refresh: true },
+  );
+  assert.deepEqual(refreshed.map((p) => p.id), [6]);
+  assert.equal(state.calls.length, 2);
+});
+
 test("homepage and region queries still include film alongside digital photos", async () => {
   const { service } = await createService(mixedPhotos);
   assert.deepEqual((await service.fetchPhotos({ page_size: 20 })).map((p) => p.id), [5, 4, 3, 2]);

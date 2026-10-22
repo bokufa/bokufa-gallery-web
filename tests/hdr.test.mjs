@@ -384,6 +384,20 @@ test('native DOM decodes share the photo queue instead of starting an unbounded 
   assert.equal(starts, 1);
 });
 
+test('loupe and zoomed film details decode before ordinary previews on a cold queue', async () => {
+  let releaseBlocker;
+  const blocker = decodePhotoElement({
+    decode() { return new Promise(resolve => { releaseBlocker = resolve; }); },
+  });
+  const order = [];
+  const preview = decodePhotoElement({ decode() { order.push('preview'); return Promise.resolve(); } }, 2);
+  const table = decodePhotoElement({ decode() { order.push('table'); return Promise.resolve(); } }, 3);
+  const loupe = decodePhotoElement({ decode() { order.push('loupe'); return Promise.resolve(); } }, 4);
+  releaseBlocker();
+  await Promise.all([blocker, preview, table, loupe]);
+  assert.deepEqual(order, ['loupe', 'table', 'preview']);
+});
+
 test('offscreen queued DOM images are cancelled before native decoding starts', async t => {
   const requests = mockImages(t);
   const first = preloadPhotoSource('cancelled-label-budget');

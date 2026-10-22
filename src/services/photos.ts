@@ -13,8 +13,8 @@ const photoApi = axios.create({
 let allPhotosCache: Photo[] | undefined;
 let allPhotosRequest: Promise<Photo[]> | undefined;
 
-function loadAllPhotos() {
-  if (allPhotosCache) return Promise.resolve(allPhotosCache);
+function loadAllPhotos(refresh = false) {
+  if (!refresh && allPhotosCache) return Promise.resolve(allPhotosCache);
   if (!allPhotosRequest) {
     allPhotosRequest = photoApi
       .get<Response<Photo[]>>("/api/photos/all", { params: { page_size: 2_000 } })
@@ -48,9 +48,10 @@ export async function fetchPhotos(
     film_only?: boolean;
   },
   signal?: AbortSignal,
+  options: { refresh?: boolean } = {},
 ) {
   if (params.prefecture_id || params.city_id || params.film_only) {
-    const allPhotos = await loadAllPhotos();
+    const allPhotos = await loadAllPhotos(options.refresh);
     const filtered = allPhotos.filter((photo) => {
       const city = photo.metadata.city;
       if (params.film_only && !isFilmPhoto(photo)) return false;

@@ -19,11 +19,12 @@ import { useHdr } from "../contexts/HdrContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { FilmQualityProvider } from "../contexts/FilmQualityContext";
 import {
-  FILM_DETAIL_SCALE_THRESHOLD,
   planFilmDetailSelection,
+  usesFilmDetail,
 } from "../utils/filmDetailSelection";
 
 import FilmLoupe from "./FilmLoupe";
+import FilmBoardSurface from "./FilmBoardSurface";
 import HdrToggle from "./HdrToggle";
 import HdrLightPanel from "./HdrLightPanel";
 import FloatingControls, { floatingControlSurface } from "./FloatingControls";
@@ -74,7 +75,7 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
       const view = viewRef.current;
 
       // Below the threshold the current cache is deliberately left untouched.
-      if (view.scale < FILM_DETAIL_SCALE_THRESHOLD) return;
+      if (!usesFilmDetail(view.scale)) return;
       const centerX = viewport.clientWidth / 2;
       const centerY = viewport.clientHeight / 2;
       const candidates = [
@@ -421,6 +422,7 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
           tabIndex={0}
         >
           <div ref={contentRef} className="film-canvas-content">
+            <FilmBoardSurface />
             {children}
           </div>
         </div>

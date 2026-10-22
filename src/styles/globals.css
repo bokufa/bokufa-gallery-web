@@ -129,33 +129,25 @@
   transform-origin: 0 0;
 }
 
-.film-canvas-content::before {
-  content: "";
+.film-board-surface {
   position: absolute;
   z-index: -1;
   inset: calc(-1 * var(--film-board-margin));
   pointer-events: none;
-  background-color: #fafaf8;
-  background-image:
-    radial-gradient(ellipse at 50% 42%, #fafaf8 0 48%, #f6f6f4 72%, #ededea 100%),
-    repeating-linear-gradient(0deg, rgba(40, 40, 38, 0.012) 0 1px, transparent 1px 5px),
-    repeating-linear-gradient(90deg, rgba(40, 40, 38, 0.01) 0 1px, transparent 1px 7px);
-  box-shadow:
-    inset 0 0 170px rgba(0, 0, 0, 0.1),
-    inset 0 0 32px rgba(0, 0, 0, 0.035);
+  overflow: hidden;
+}
+
+.film-board-texture {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
   transition: opacity 600ms ease-in-out;
 }
 
-.film-canvas-content::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: calc(-1 * var(--film-board-margin));
-  pointer-events: none;
-  background-image: radial-gradient(ellipse at 50% 42%, transparent 0 60%, rgba(0, 0, 0, 0.015) 100%);
-  box-shadow: inset 0 0 170px rgba(0, 0, 0, 0.045), inset 0 0 32px rgba(0, 0, 0, 0.015);
+.film-board-texture-hdr {
   opacity: 0;
-  transition: opacity 600ms ease-in-out;
 }
 
 .film-canvas-controls {
@@ -711,9 +703,9 @@ img[data-hdr-active="true"] { dynamic-range-limit: no-limit; }
 
 .film-hdr-light[data-ready="true"] { opacity: 1; }
 
-.film-canvas[data-hdr-enabled="true"] .film-canvas-content::before {
+.film-canvas[data-hdr-enabled="true"] .film-board-texture-sdr {
   /* Fade the SDR paper/vignette away while the HDR panel lights underneath. */
   opacity: 0;
 }
 
-.film-canvas[data-hdr-enabled="true"] .film-canvas-content::after { opacity: 1; }
+.film-canvas[data-hdr-enabled="true"] .film-board-texture-hdr { opacity: 1; }

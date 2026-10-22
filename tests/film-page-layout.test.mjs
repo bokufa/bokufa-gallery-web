@@ -5,6 +5,7 @@ import test from "node:test";
 const filmPage = await readFile(new URL("../src/routes/FilmPage.tsx", import.meta.url), "utf8");
 const root = await readFile(new URL("../src/routes/Root.tsx", import.meta.url), "utf8");
 const styles = await readFile(new URL("../src/styles/globals.css", import.meta.url), "utf8");
+const board = await readFile(new URL("../src/components/FilmBoardSurface.tsx", import.meta.url), "utf8");
 
 test("film page uses an independent contact-sheet layout without location descriptions", () => {
   assert(!filmPage.includes("PhotoMasonry"));
@@ -64,4 +65,15 @@ test("every film-page visit fades the mounted table, including cached returns an
   assert(!filmPage.includes("<FilmCanvas key="), "HDR and image updates must not remount the animated canvas");
   assert.match(root, /film-light-table[^`]*duration-\[600ms\] ease-in-out/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.film-contact-page > \.film-canvas\s*\{\s*animation: none/);
+});
+
+test("the full board uses bounded canvas textures instead of viewport-sized CSS raster layers", () => {
+  assert.match(board, /FILM_BOARD_TEXTURE_SIZE = 1024/);
+  assert.match(board, /paintBoard\(sdrRef\.current, "sdr"\)/);
+  assert.match(board, /paintBoard\(hdrRef\.current, "hdr"\)/);
+  assert.match(styles, /\.film-board-surface/);
+  assert.match(styles, /\.film-board-texture-sdr/);
+  assert.match(styles, /\.film-board-texture-hdr/);
+  assert(!styles.includes(".film-canvas-content::before"));
+  assert(!styles.includes(".film-canvas-content::after"));
 });

@@ -68,6 +68,7 @@ function FilmDetailOverlay({
         data-hdr-active={hdr}
         decoding="async"
         draggable={false}
+        fetchPriority="high"
         loading="eager"
         src={file.url}
         onLoad={(event) => {
@@ -76,7 +77,7 @@ function FilmDetailOverlay({
 
           decodeRef.current?.abort();
           decodeRef.current = controller;
-          void decodePhotoElement(image, 1, controller.signal)
+          void decodePhotoElement(image, 3, controller.signal)
             .then(() => {
               if (imageRef.current === image) setReady(true);
             })
@@ -243,7 +244,9 @@ export default function FilmPage() {
 
     setIsLoading(true);
     setHasError(false);
-    fetchPhotos({ page_size: 2_000, film_only: true }, controller.signal)
+    fetchPhotos({ page_size: 2_000, film_only: true }, controller.signal, {
+      refresh: true,
+    })
       .then(setPhotos)
       .catch((error) => {
         if (error?.name !== "CanceledError") setHasError(true);

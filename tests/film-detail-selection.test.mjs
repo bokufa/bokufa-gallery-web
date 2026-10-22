@@ -18,7 +18,9 @@ const code = ts.transpileModule(
 const {
   planFilmDetailSelection,
   FILM_DETAIL_SCALE_THRESHOLD,
+  FILM_DETAIL_PERCENT_THRESHOLD,
   MAX_FILM_DETAIL_IMAGES,
+  usesFilmDetail,
 } = await import(
   `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`
 );
@@ -29,12 +31,15 @@ const candidates = [1, 2, 3, 4].map((id, index) => ({
 
 test("the table starts detail upgrades only at 200 percent and caps them at three", () => {
   assert.equal(FILM_DETAIL_SCALE_THRESHOLD, 2);
+  assert.equal(FILM_DETAIL_PERCENT_THRESHOLD, 200);
   assert.equal(MAX_FILM_DETAIL_IMAGES, 3);
   let ids = new Set();
-  ids = planFilmDetailSelection(ids, candidates, 1.99).ids;
+  ids = planFilmDetailSelection(ids, candidates, 1.994).ids;
   assert.deepEqual([...ids], []);
+  assert.equal(usesFilmDetail(1.994), false);
+  assert.equal(usesFilmDetail(1.995), true);
   for (let i = 0; i < 4; i++)
-    ids = planFilmDetailSelection(ids, candidates, 2).ids;
+    ids = planFilmDetailSelection(ids, candidates, 1.995).ids;
   assert.deepEqual([...ids], [1, 2, 3]);
 });
 

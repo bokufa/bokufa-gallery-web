@@ -197,6 +197,7 @@ export function mountFilmLoupe({
     image.style.position = "absolute";
     image.style.zIndex = "2";
     image.style.transition = "opacity 600ms ease-in-out";
+    image.fetchPriority = "high";
     image.loading = "eager";
     image.src = url;
     image.dataset.bufferActive = "false";
@@ -216,7 +217,7 @@ export function mountFilmLoupe({
     entry.image.parentElement?.append(image);
     void decodePhotoElement(
       image,
-      1,
+      4,
       pending.controller.signal,
       PHOTO_LOAD_TIMEOUT_MS,
     )
