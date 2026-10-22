@@ -49,7 +49,7 @@ export default function FilmEdgeHdrOverlay({
     const viewport = viewportRef.current!;
     const content = contentRef.current!;
     const overlay = overlayRef.current!;
-    let labels: ManagedLabel[] = [];
+    const labels = new Map<HTMLElement, ManagedLabel>();
     let rebuildFrame = 0;
 
     const update = () => {
@@ -60,7 +60,7 @@ export default function FilmEdgeHdrOverlay({
         overlay.dataset.active === "true" ||
         overlay.dataset.retained === "true";
 
-      for (const label of labels) {
+      for (const label of labels.values()) {
         const left = view.x + label.worldLeft * view.scale;
         const top = view.y + label.worldTop * view.scale;
         const itemWidth = label.worldWidth * view.scale;
@@ -104,20 +104,23 @@ export default function FilmEdgeHdrOverlay({
         }
       }
     };
+    const remove = (label: ManagedLabel) => {
+      delete label.source.dataset.edgeScreenManaged;
+      label.overlay.remove();
+      labels.delete(label.source);
+    };
     const clear = () => {
-      for (const label of labels) delete label.source.dataset.edgeScreenManaged;
-      labels = [];
-      overlay.replaceChildren();
+      for (const label of [...labels.values()]) remove(label);
     };
     const rebuild = () => {
       rebuildFrame = 0;
-      clear();
       const view = viewRef.current;
       const viewportRect = viewport.getBoundingClientRect();
+      const retainedSources = new Set<HTMLElement>();
 
-      labels = [
-        ...content.querySelectorAll<HTMLElement>(".film-edge-label"),
-      ].flatMap((source) => {
+      for (const source of content.querySelectorAll<HTMLElement>(
+        ".film-edge-label",
+      )) {
         const text = source.dataset.edgeText?.toUpperCase();
         const src = text ? FILM_EDGE_HDR_LABELS[text] : undefined;
         const vector = source.querySelector<SVGSVGElement>(".film-edge-dots");
@@ -129,57 +132,90 @@ export default function FilmEdgeHdrOverlay({
           (enteringFrame &&
             getComputedStyle(enteringFrame).animationName !== "none")
         )
-          return [];
+          continue;
         const rect = source.getBoundingClientRect();
         const vertical = rect.height > rect.width;
-        const item = document.createElement("span");
-        const ink = document.createElement("span");
-        const image = document.createElement("img");
-        const vectorCopy = vector.cloneNode(true) as SVGSVGElement;
+        let label = labels.get(source);
 
-        item.className = `film-edge-screen-label${vertical ? " is-vertical" : ""}`;
-        item.dataset.edgeText = text;
-        ink.className = "film-edge-screen-ink";
-        image.className = "film-edge-screen-hdr";
-        image.alt = "";
-        image.decoding = "async";
-        image.draggable = false;
-        image.dataset.hdrActive = "true";
-        vectorCopy.className.baseVal = "film-edge-screen-vector";
-        ink.append(image, vectorCopy);
-        item.append(ink);
-        overlay.append(item);
-        source.dataset.edgeScreenManaged = "true";
+        if (label && label.overlay.dataset.edgeText !== text) {
+          remove(label);
+          label = undefined;
+        }
+        if (!label) {
+          const item = document.createElement("span");
+          const ink = document.createElement("span");
+          const image = document.createElement("img");
+          const vectorCopy = vector.cloneNode(true) as SVGSVGElement;
 
-        return [
-          {
+          item.className = "film-edge-screen-label";
+          item.dataset.edgeText = text;
+          ink.className = "film-edge-screen-ink";
+          image.className = "film-edge-screen-hdr";
+          image.alt = "";
+          image.decoding = "async";
+          image.draggable = false;
+          image.dataset.hdrActive = "true";
+          vectorCopy.className.baseVal = "film-edge-screen-vector";
+          ink.append(image, vectorCopy);
+          item.append(ink);
+          overlay.append(item);
+          label = {
             source,
             overlay: item,
             image,
             imageSrc: src,
-            worldLeft: (rect.left - viewportRect.left - view.x) / view.scale,
-            worldTop: (rect.top - viewportRect.top - view.y) / view.scale,
-            worldWidth: rect.width / view.scale,
-            worldHeight: rect.height / view.scale,
-          },
-        ];
-      });
+            worldLeft: 0,
+            worldTop: 0,
+            worldWidth: 0,
+            worldHeight: 0,
+          };
+          labels.set(source, label);
+        }
+        label.overlay.classList.toggle("is-vertical", vertical);
+        label.worldLeft = (rect.left - viewportRect.left - view.x) / view.scale;
+        label.worldTop = (rect.top - viewportRect.top - view.y) / view.scale;
+        label.worldWidth = rect.width / view.scale;
+        label.worldHeight = rect.height / view.scale;
+        source.dataset.edgeScreenManaged = "true";
+        retainedSources.add(source);
+      }
+      for (const label of [...labels.values()])
+        if (!retainedSources.has(label.source)) remove(label);
       update();
     };
     const queueRebuild = () => {
       cancelAnimationFrame(rebuildFrame);
       rebuildFrame = requestAnimationFrame(rebuild);
     };
-    const observer = new MutationObserver(queueRebuild);
+    const containsEdgeLabel = (nodes: NodeList) =>
+      [...nodes].some(
+        (node) =>
+          node instanceof Element &&
+          (node.matches(".film-edge-label") ||
+            Boolean(node.querySelector(".film-edge-label"))),
+      );
+    const observer = new MutationObserver((records) => {
+      if (
+        records.some(
+          (record) =>
+            containsEdgeLabel(record.addedNodes) ||
+            containsEdgeLabel(record.removedNodes),
+        )
+      )
+        queueRebuild();
+    });
     const resize = new ResizeObserver(queueRebuild);
+    const animationEnd = (event: AnimationEvent) => {
+      if ((event.target as Element).matches(".film-frame-enter"))
+        queueRebuild();
+    };
 
     observer.observe(content, {
       childList: true,
       subtree: true,
-      attributes: true,
-      attributeFilter: ["class"],
     });
     resize.observe(viewport);
+    content.addEventListener("animationend", animationEnd);
     sceneChangedRef.current = update;
     queueRebuild();
 
@@ -187,6 +223,7 @@ export default function FilmEdgeHdrOverlay({
       cancelAnimationFrame(rebuildFrame);
       observer.disconnect();
       resize.disconnect();
+      content.removeEventListener("animationend", animationEnd);
       sceneChangedRef.current = () => undefined;
       clear();
     };

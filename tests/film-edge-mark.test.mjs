@@ -115,7 +115,11 @@ test('mobile edge HDR is mirrored outside the transformed film scene without lay
   assert.match(overlay, /worldLeft:/);
   assert.match(overlay, /worldTop:/);
   assert.match(overlay, /sceneChangedRef\.current = update/);
-  const update = overlay.slice(overlay.indexOf('const update = () => {'), overlay.indexOf('const clear = () => {'));
+  assert.match(overlay, /const labels = new Map<HTMLElement, ManagedLabel>/);
+  assert.match(overlay, /let label = labels\.get\(source\)/);
+  assert.match(overlay, /const containsEdgeLabel =/);
+  assert(!overlay.includes('attributeFilter: ["class"]'), 'photo quality and zoom class changes must not rebuild edge HDR');
+  const update = overlay.slice(overlay.indexOf('const update = () => {'), overlay.indexOf('const remove ='));
   assert(!update.includes('getBoundingClientRect'), 'drag and pinch frames use cached world geometry');
   assert.match(css, /\.film-edge-screen-overlay\s*\{[^}]*position:\s*absolute[^}]*z-index:\s*2/s);
   assert.match(css, /data-edge-screen-managed="true"[\s\S]*> \.film-edge-hdr-layout[\s\S]*visibility:\s*hidden/);
