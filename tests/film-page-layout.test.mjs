@@ -81,6 +81,8 @@ test("the full board uses bounded canvas textures instead of viewport-sized CSS 
   assert.match(styles, /\.film-board-surface/);
   assert.match(styles, /\.film-board-texture-sdr/);
   assert.match(styles, /\.film-board-texture-hdr/);
+  assert.match(styles, /width:\s*var\(--film-detail-size, 100%\)/);
+  assert.match(styles, /transform:\s*scale\(var\(--film-detail-inverse-scale, 1\)\)/);
   assert(!styles.includes(".film-canvas-content::before"));
   assert(!styles.includes(".film-canvas-content::after"));
 });

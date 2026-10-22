@@ -42,12 +42,14 @@ test('HDR labels use one small whole-label image rather than an atlas image per 
   assert(!renderToStaticMarkup(React.createElement(FilmEdgeMark, { text: 'FUJI' })).includes('<img'));
   globalThis.__testEdgeHdr = true;
   const html = renderToStaticMarkup(React.createElement(FilmEdgeMark, { text: '▶ RDP III' }));
+  assert.match(html, /data-edge-hdr-decoded="false"/);
   assert.match(html, /data-edge-hdr-ready="false"/);
-  assert.match(html, /data-edge-hdr-settled="false"/);
+  assert(!html.includes('data-edge-hdr-settled'));
   assert.match(html, /data-hdr-active="true"/);
   const urls = [...html.matchAll(/<img[^>]+src="([^"]+)"/g)].map(match => match[1]);
   assert.equal(urls.length, 1);
   assert.equal(urls[0], FILM_EDGE_HDR_LABELS['▶ RDP III']);
+  assert.match(html, /class="film-edge-hdr-layout"/);
   assert.match(css, /\.film-edge-hdr\s*\{[^}]*dynamic-range-limit:\s*no-limit/);
   assert(!html.includes(FILM_EDGE_HDR_SRC));
   assert(!renderToStaticMarkup(React.createElement(FilmEdgeMark, { text: 'FUJI', active: false })).includes('<img'), 'offscreen labels allocate no native HDR image');
@@ -81,14 +83,23 @@ test('complete-label HDR assets preserve the warm gain map with much smaller dec
   assert(total < 256 * 1024, 'all supported labels together are smaller than the old single atlas');
 });
 
-test('LED, photo and edge layers share a reversible 600ms fade without hiding the opaque fallback', () => {
-  for (const selector of ['.film-edge-hdr', '.film-hdr-light', '.buffered-photo .buffered-photo-layer']) {
+test('LED and photo layers fade while native HDR edge ink stays out of an SDR opacity surface', () => {
+  for (const selector of ['.film-hdr-light', '.buffered-photo .buffered-photo-layer']) {
     const rule = css.slice(css.indexOf(`${selector} {`)).split('}')[0];
     assert.match(rule, /transition:\s*opacity 600ms ease-in-out/);
   }
+  const edgeRule = css.slice(css.indexOf('.film-edge-hdr {')).split('}')[0];
+  assert.match(edgeRule, /visibility:\s*hidden/);
+  assert(!edgeRule.includes('opacity:'));
+  assert(!edgeRule.includes('transition:'));
   assert(!css.includes('.buffered-photo-layer { transition: none !important; }'));
   assert(!css.includes('> .film-edge-dots {\n  visibility: hidden;'), 'SDR lettering remains visible beneath the native HDR fade');
-  assert.match(css, /\.film-edge-label\[data-edge-hdr-settled="true"\] > \.film-edge-hdr\s*\{\s*transition: none/);
+  assert.match(css, /\.film-edge-dots\s*\{[^}]*transition:\s*opacity 600ms ease-in-out/s);
+  assert.match(css, /\.film-edge-label\[data-edge-hdr-ready="true"\] > \.film-edge-dots\s*\{[^}]*opacity:\s*0\.18/s);
+  assert(!css.includes('mix-blend-mode: plus-lighter'));
+  assert.match(css, /\.film-edge-hdr-layout\s*\{[^}]*width:\s*var\(--film-detail-size, 100%\)[^}]*transform:\s*scale\(var\(--film-detail-inverse-scale, 1\)\)/s);
+  assert.match(css, /\.film-edge-label\[data-edge-hdr-decoded="true"\] \.film-edge-hdr\s*\{\s*visibility:\s*visible/);
+  assert(!css.includes('data-edge-hdr-settled'));
 });
 
 test('HDR atlas matches every glyph and contains compatible ISO plus legacy Adobe metadata', async () => {

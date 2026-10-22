@@ -189,7 +189,11 @@ test("canvas gestures suppress drag clicks, preserve normal clicks, support pinc
   const content = {
     offsetWidth: 1000,
     offsetHeight: 1800,
-    style: {},
+    style: {
+      setProperty(name, value) {
+        this[name] = value;
+      },
+    },
     querySelectorAll: () => fixture.frames ?? [],
   };
   const viewport = {
@@ -396,6 +400,8 @@ test("canvas gestures suppress drag clicks, preserve normal clicks, support pinc
     assert.match(content.style.transform, /scale\(2\.5\)/);
     emit("pointerup", { pointerId: 2 });
     emit("pointerup");
+    assert.equal(content.style["--film-detail-size"], "250%");
+    assert.equal(content.style["--film-detail-inverse-scale"], "0.4");
 
     const controls = tree.props.children
       .flatMap((child) => [child, child?.props?.children])

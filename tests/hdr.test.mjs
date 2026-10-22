@@ -345,7 +345,7 @@ test('one decoded HDR edge image survives a reverse fade but is released when of
   const node = { decode: () => { decodes++; return Promise.resolve(); } };
   const render = harness(t, props => {
     const tree = FilmEdgeMark(props);
-    const image = tree.props.children[1];
+    const image = tree.props.children[1]?.props.children;
     if (image) image.props.ref.current = node;
     return tree;
   });
@@ -353,17 +353,20 @@ test('one decoded HDR edge image survives a reverse fade but is released when of
   const paint = () => { const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(fn => fn()); };
   let tree = render({ text: 'FUJI' });
   assert.equal(tree.props.children[1], null);
+  assert.equal(tree.props['data-edge-hdr-decoded'], false);
   globalThis.__hdrTable.enabled = true;
   tree = render({ text: 'FUJI' });
   tree = render({ text: 'FUJI' });
   assert.equal(tree.props['data-edge-hdr-ready'], false);
   await tick(); paint(); paint(); tree = render({ text: 'FUJI' });
+  assert.equal(tree.props['data-edge-hdr-decoded'], true);
   assert.equal(tree.props['data-edge-hdr-ready'], true);
   assert.equal(decodes, 1);
   globalThis.__hdrTable.enabled = false;
   tree = render({ text: 'FUJI' });
+  assert.equal(tree.props['data-edge-hdr-decoded'], true, 'decoded HDR stays natively painted beneath the closing vector fade');
   assert.equal(tree.props['data-edge-hdr-ready'], false);
-  assert.equal(tree.props.children[1].type, 'img', 'closing fade retains the one native label');
+  assert.equal(tree.props.children[1].props.children.type, 'img', 'closing fade retains the one native label');
   globalThis.__hdrTable.enabled = true;
   tree = render({ text: 'FUJI' });
   assert.equal(tree.props['data-edge-hdr-ready'], true);

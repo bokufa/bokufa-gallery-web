@@ -63,6 +63,17 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
     let moving = false;
     let viewportWidth = viewport.clientWidth;
 
+    const syncDetailLayout = (scale: number) => {
+      // The canvas is scaled as one scene for cheap gestures. Once motion
+      // stops, lay detail images out at their final size and counter-scale the
+      // wrapper so mobile browsers allocate a genuinely sharp backing image.
+      content.style.setProperty("--film-detail-size", `${scale * 100}%`);
+      content.style.setProperty(
+        "--film-detail-inverse-scale",
+        String(1 / scale),
+      );
+    };
+
     const beginMotion = () => {
       clearTimeout(motionTimer);
       if (moving) return;
@@ -74,6 +85,7 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
       if (!moving) return;
       moving = false;
       delete viewport.dataset.filmMoving;
+      syncDetailLayout(viewRef.current.scale);
       setCompact(viewRef.current.scale < FILM_COMPACT_SCALE_THRESHOLD);
       viewport.dispatchEvent(new Event("filmcanvasidle"));
       qualityChangedRef.current();
@@ -201,7 +213,10 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
         sceneChangedRef.current();
         queueDetailQuality();
         setScale(Math.round(next.scale * 100));
-        if (!moving) setCompact(next.scale < FILM_COMPACT_SCALE_THRESHOLD);
+        if (!moving) {
+          syncDetailLayout(next.scale);
+          setCompact(next.scale < FILM_COMPACT_SCALE_THRESHOLD);
+        }
         setMinimumPercent(
           Math.round(
             minimumFilmScale(

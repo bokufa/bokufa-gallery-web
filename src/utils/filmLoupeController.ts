@@ -456,7 +456,7 @@ export function mountFilmLoupe({
         const edgeState = labels
           .map(
             (label) =>
-              `${label.dataset.edgeText}:${label.dataset.edgeHdrReady}:${label.dataset.edgeHdrSettled}:${label.childElementCount}`,
+              `${label.dataset.edgeText}:${label.dataset.edgeHdrDecoded}:${label.dataset.edgeHdrReady}:${label.childElementCount}`,
           )
           .join("|");
 
@@ -468,7 +468,7 @@ export function mountFilmLoupe({
           labels.forEach((label, index) => {
             const copy = copies[index];
 
-            // Preserve the same native atlas nodes so CSS can reverse a fade.
+            // Preserve the same decoded native label nodes across refreshes.
             if (
               copy &&
               copy.dataset.edgeText === label.dataset.edgeText &&
@@ -479,8 +479,8 @@ export function mountFilmLoupe({
                 label.dataset.edgeHdrReady ?? "false",
               );
               copy.setAttribute(
-                "data-edge-hdr-settled",
-                label.dataset.edgeHdrSettled ?? "false",
+                "data-edge-hdr-decoded",
+                label.dataset.edgeHdrDecoded ?? "false",
               );
             } else copy?.replaceWith(label.cloneNode(true));
           });
