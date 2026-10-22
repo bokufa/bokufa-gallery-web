@@ -83,7 +83,7 @@ test('complete-label HDR assets preserve the warm gain map with much smaller dec
   assert(total < 256 * 1024, 'all supported labels together are smaller than the old single atlas');
 });
 
-test('LED and photo layers fade while native HDR edge ink stays out of an SDR opacity surface', () => {
+test('LED and photo layers fade while native HDR edge ink stays out of animated compositor surfaces', () => {
   for (const selector of ['.film-hdr-light', '.buffered-photo .buffered-photo-layer']) {
     const rule = css.slice(css.indexOf(`${selector} {`)).split('}')[0];
     assert.match(rule, /transition:\s*opacity 600ms ease-in-out/);
@@ -94,10 +94,16 @@ test('LED and photo layers fade while native HDR edge ink stays out of an SDR op
   assert(!edgeRule.includes('transition:'));
   assert(!css.includes('.buffered-photo-layer { transition: none !important; }'));
   assert(!css.includes('> .film-edge-dots {\n  visibility: hidden;'), 'SDR lettering remains visible beneath the native HDR fade');
-  assert.match(css, /\.film-edge-dots\s*\{[^}]*transition:\s*opacity 600ms ease-in-out/s);
-  assert.match(css, /\.film-edge-label\[data-edge-hdr-ready="true"\] > \.film-edge-dots\s*\{[^}]*opacity:\s*0\.18/s);
+  const dotsRule = css.slice(css.indexOf('.film-edge-dots {')).split('}')[0];
+  assert.match(dotsRule, /transition:\s*color 600ms ease-in-out/);
+  assert(!dotsRule.includes('transition: opacity'), 'the vector may repaint its ink but must not create an opacity compositor surface');
+  assert.match(css, /\.film-edge-label\[data-edge-hdr-ready="true"\] > \.film-edge-dots\s*\{[^}]*color:\s*rgb\(255 198 37 \/ 18%\)/s);
   assert(!css.includes('mix-blend-mode: plus-lighter'));
-  assert.match(css, /\.film-edge-hdr-layout\s*\{[^}]*width:\s*var\(--film-detail-size, 100%\)[^}]*transform:\s*scale\(var\(--film-detail-inverse-scale, 1\)\)/s);
+  const layoutRule = css.slice(css.indexOf('.film-edge-hdr-layout {')).split('}')[0];
+  assert.match(layoutRule, /width:\s*100%/);
+  assert.match(layoutRule, /height:\s*100%/);
+  assert(!layoutRule.includes('transform:'), 'zoom-settle relayout must not rebuild an HDR label texture');
+  assert(!css.slice(css.indexOf('.film-edge-label {')).split('}')[0].includes('isolation:'), 'the edge label must not force HDR and SVG into one offscreen group');
   assert.match(css, /\.film-edge-label\[data-edge-hdr-decoded="true"\] \.film-edge-hdr\s*\{\s*visibility:\s*visible/);
   assert(!css.includes('data-edge-hdr-settled'));
 });
