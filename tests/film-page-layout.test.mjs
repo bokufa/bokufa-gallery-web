@@ -34,7 +34,11 @@ test("film page receives the LED table and the same floating chrome as the map",
   assert.match(filmPage, /useFilmVisibility\(frameRef\)/);
   assert.match(filmPage, /filmPreviewFile\(photo, hdrEnabled\)/);
   assert.match(filmPage, /suspend=\{!visible \|\| compact\}/);
-  assert.match(filmPage, /visible && !compact && detailSelected/);
+  assert.match(filmPage, /!compact && detailSelected && detailFile/);
+  assert(
+    !filmPage.includes("visible && !compact && detailSelected"),
+    "mobile visibility observation must not suppress a selected detail layer",
+  );
   assert.match(filmPage, /setPreviewUrl\(preview\.url\)/);
   assert(!filmPage.includes('preloadPhotoSource(photo.hdr_file'), 'board must never preload the full HDR source');
 });

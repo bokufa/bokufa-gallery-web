@@ -228,7 +228,10 @@ function FilmFrame({
             setImageLoaded(true);
           }}
         />
-        {visible && !compact && detailSelected && detailFile ? (
+        {/* Detail selection already contains only on-screen frames. Do not
+            gate it on IntersectionObserver: transformed elements can report a
+            stale off-screen state on mobile Safari after a pinch gesture. */}
+        {!compact && detailSelected && detailFile ? (
           <FilmDetailOverlay file={detailFile} hdr={hdrEnabled} photo={photo} />
         ) : null}
       </span>
