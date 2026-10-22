@@ -59,8 +59,16 @@ struct VertexOutput {
 }
 
 @fragment fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
-  let coverage = 1.0 - smoothstep(0.72, 1.0, length(input.local));
-  return input.color * coverage;
+  let radius = length(input.local);
+  let coverage = 1.0 - smoothstep(0.72, 1.0, radius);
+  let center = input.color.rgb;
+  let middle = vec3f(4.0, 2.0596707, 0.0705678);
+  let rim = vec3f(3.2278090, 0.8489230, 0.0160989);
+  let center_to_middle = smoothstep(0.0, 0.55, radius);
+  let middle_to_rim = smoothstep(0.55, 1.0, radius);
+  let warm = mix(mix(center, middle, center_to_middle), rim, middle_to_rim);
+  let alpha = input.color.a * coverage;
+  return vec4f(warm * alpha, alpha);
 }
 `;
 
@@ -109,7 +117,10 @@ export function mountHdrEdgeCanvas(
     if (canvas.width !== canvasWidth) canvas.width = canvasWidth;
     if (canvas.height !== canvasHeight) canvas.height = canvasHeight;
     const values: number[] = [];
-    const warm = [2.7 * progress, 1.25 * progress, 0.04 * progress, progress];
+    // Match the original gain-map label's #ffcd36 → #ffbe24 → #e87f0d
+    // radial ink in extended linear sRGB. Keeping the target color stable and
+    // animating only alpha prevents hue shifts during the light-up transition.
+    const warm = [4, 2.4419823, 0.1475578, progress];
     const corners = [
       [-1, -1],
       [1, -1],
