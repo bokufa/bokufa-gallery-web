@@ -42,6 +42,7 @@ export default function FilmEdgeMark({
 }) {
   const { enabled } = useHdr();
   const letters = [...text.toUpperCase()];
+  const columns = Math.max(1, letters.length * 6 - 1);
   const [ready, setReady] = useState(false);
   const [retained, setRetained] = useState(false);
   const image = useRef<HTMLImageElement>(null);
@@ -103,7 +104,13 @@ export default function FilmEdgeMark({
       className="film-edge-label"
       data-edge-hdr-ready={active && enabled && ready}
       data-edge-text={text}
-      style={{ aspectRatio: `${Math.max(1, letters.length * 6 - 1)} / 7` }}
+      style={{
+        // Avoid WebKit's cyclic max-content sizing for a percentage-width SVG
+        // inside a rotated, auto-width flex item. The loupe did not hit this
+        // path because it lays film out again at its final magnified size.
+        width: `calc(var(--film-mm) * ${(1.15 * columns) / 7})`,
+        aspectRatio: `${columns} / 7`,
+      }}
     >
       <EdgeDots text={text} />
       {showImage ? (

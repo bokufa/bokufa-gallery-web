@@ -19,6 +19,7 @@ const {
   minimumFilmScale,
   defaultFilmView,
   FILM_BOARD_MARGIN,
+  MIN_FILM_SCALE,
 } = await import(
   `data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`
 );
@@ -45,7 +46,8 @@ test("scale stops at the allowed minimum and 300% and stays stable at either lim
   const minimum = zoomFilmView(view, 0.01, 400, 300);
 
   assert.equal(maximum.scale, 3);
-  assert.equal(minimum.scale, 0.1);
+  assert.equal(MIN_FILM_SCALE, 0.3);
+  assert.equal(minimum.scale, 0.3);
   assert.deepEqual(zoomFilmView(maximum, 10, 400, 300), maximum);
   assert.deepEqual(zoomFilmView(minimum, 0.01, 400, 300), minimum);
 });
@@ -82,7 +84,7 @@ test("the enlarged board always covers the viewport at every zoom and pan limit"
     [1000, 700, 1440, 1800],
     [1920, 1080, 1440, 1080],
   ]) {
-    for (const scale of [0.01, 0.1, 0.6, 1, 2, 3, 100]) {
+    for (const scale of [0.01, 0.3, 0.6, 1, 2, 3, 100]) {
       for (const position of [-5000, 0, 5000]) {
         const view = boundFilmView(
           { x: position, y: position, scale },

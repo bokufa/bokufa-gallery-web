@@ -29,6 +29,7 @@ test("all edge lettering, including FUJI, retains crisp vector dots and inherits
     const html = renderToStaticMarkup(React.createElement(FilmEdgeMark, { text }));
     assert.match(html, /fill="currentColor"/);
     assert.match(html, /<circle /);
+    assert.match(html, /width:calc\(var\(--film-mm\) \* [\d.]+\)/);
     assert(!html.includes("<canvas"));
     assert(!html.includes("<filter"));
   }

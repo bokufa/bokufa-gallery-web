@@ -14,7 +14,7 @@ export interface CanvasRect {
 export const FILM_WORLD_WIDTH = 1440;
 export const FILM_WORLD_HEIGHT = 900;
 export const FILM_BOARD_MARGIN = 1440;
-export const MIN_FILM_SCALE = 0.1;
+export const MIN_FILM_SCALE = 0.3;
 export const MAX_FILM_SCALE = 3;
 
 export function zoomFilmView(
