@@ -1,0 +1,28 @@
+{
+  "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-▶",
+  "columns": 8,
+  "rows": 5,
+  "unit": 32,
+  "width": 1536,
+  "height": 1280,
+  "cellWidth": 6,
+  "cellHeight": 8,
+  "glyphWidth": 5,
+  "glyphHeight": 7,
+  "hdrBoost": 4,
+  "hdrCapacityMin": 1,
+  "hdrCapacityMax": 4,
+  "referenceInkMedian": [
+    254,
+    181,
+    30
+  ],
+  "bytes": 427943,
+  "sha256": "546c151c6ff6b53b47b262eca9ab130d2e7a339966739b01a3c224289cf8ab5e",
+  "nativeHdrDecodeVerified": true,
+  "imageUrl": "/film-edge/glyphs-hdr-iso-v0.jpg",
+  "appleHdrDecodeVerified": true,
+  "hdrPeakLuminance": 2.590463876724243,
+  "headroom": 4,
+  "sdrPeakLuminance": 0.6476160287857056
+}

@@ -1,70 +1,117 @@
-// A 5×7 dot matrix recreates the exposed edge printing in the supplied RDP III scan.
-// Vector dots stay crisp while zooming and do not depend on a substitute system font.
-const glyphs: Record<string, string[]> = {
-  A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
-  B: ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
-  C: ["01111", "10000", "10000", "10000", "10000", "10000", "01111"],
-  D: ["11110", "10001", "10001", "10001", "10001", "10001", "11110"],
-  E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
-  F: ["11111", "10000", "10000", "11110", "10000", "10000", "10000"],
-  G: ["01111", "10000", "10000", "10111", "10001", "10001", "01111"],
-  H: ["10001", "10001", "10001", "11111", "10001", "10001", "10001"],
-  I: ["11111", "00100", "00100", "00100", "00100", "00100", "11111"],
-  J: ["00111", "00010", "00010", "00010", "00010", "10010", "01100"],
-  K: ["10001", "10010", "10100", "11000", "10100", "10010", "10001"],
-  L: ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
-  M: ["10001", "11011", "10101", "10101", "10001", "10001", "10001"],
-  N: ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
-  O: ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
-  P: ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
-  Q: ["01110", "10001", "10001", "10001", "10101", "10010", "01101"],
-  R: ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
-  S: ["01111", "10000", "10000", "01110", "00001", "00001", "11110"],
-  T: ["11111", "00100", "00100", "00100", "00100", "00100", "00100"],
-  U: ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
-  V: ["10001", "10001", "10001", "10001", "10001", "01010", "00100"],
-  W: ["10001", "10001", "10001", "10101", "10101", "11011", "10001"],
-  X: ["10001", "10001", "01010", "00100", "01010", "10001", "10001"],
-  Y: ["10001", "10001", "01010", "00100", "00100", "00100", "00100"],
-  Z: ["11111", "00001", "00010", "00100", "01000", "10000", "11111"],
-  0: ["01110", "10001", "10011", "10101", "11001", "10001", "01110"],
-  1: ["00100", "01100", "00100", "00100", "00100", "00100", "01110"],
-  2: ["01110", "10001", "00001", "00010", "00100", "01000", "11111"],
-  3: ["11110", "00001", "00001", "01110", "00001", "00001", "11110"],
-  4: ["00010", "00110", "01010", "10010", "11111", "00010", "00010"],
-  5: ["11111", "10000", "10000", "11110", "00001", "00001", "11110"],
-  6: ["01110", "10000", "10000", "11110", "10001", "10001", "01110"],
-  7: ["11111", "00001", "00010", "00100", "01000", "01000", "01000"],
-  8: ["01110", "10001", "10001", "01110", "10001", "10001", "01110"],
-  9: ["01110", "10001", "10001", "01111", "00001", "00001", "01110"],
-  "-": ["00000", "00000", "00000", "11111", "00000", "00000", "00000"],
-  "▶": ["10000", "11100", "11110", "11111", "11110", "11100", "10000"],
-};
+import { useEffect, useRef, useState } from "react";
+
+import { useHdr } from "../contexts/HdrContext";
+import {
+  filmGlyphs,
+  FILM_GLYPH_ORDER,
+  FILM_GLYPH_COLUMNS,
+  FILM_GLYPH_ROWS,
+  FILM_EDGE_HDR_SRC,
+} from "../utils/filmGlyphs";
 
 export default function FilmEdgeMark({ text }: { text: string }) {
+  const { enabled } = useHdr();
   const letters = [...text.toUpperCase()];
+  const [ready, setReady] = useState(false);
+  const [activated, setActivated] = useState(enabled);
+  const images = useRef(new Map<number, HTMLImageElement>());
+
+  useEffect(() => {
+    if (enabled) setActivated(true);
+  }, [enabled]);
+
+  useEffect(() => {
+    let active = true;
+    const frames = new Set<number>();
+
+    setReady(false);
+    if (!activated) return;
+
+    // Decode the real image nodes, then allow two paint frames before hiding
+    // the vector fallback. One native HDR atlas is shared by every edge label.
+    const paint = (callback: () => void) => {
+      const id = requestAnimationFrame(() => {
+        frames.delete(id);
+        if (active) callback();
+      });
+
+      frames.add(id);
+    };
+
+    void Promise.all(
+      [...images.current.values()].map((image) => image.decode()),
+    )
+      .then(() => {
+        if (active) paint(() => paint(() => setReady(true)));
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+      frames.forEach(cancelAnimationFrame);
+    };
+  }, [activated, text]);
 
   return (
-    <svg
+    <span
       aria-hidden="true"
-      className="film-edge-dots"
-      fill="currentColor"
-      viewBox={`0 0 ${Math.max(1, letters.length * 6 - 1)} 7`}
+      className="film-edge-label"
+      data-edge-hdr-ready={enabled && ready}
+      data-edge-text={text}
+      style={{ aspectRatio: `${Math.max(1, letters.length * 6 - 1)} / 7` }}
     >
-      {letters.map((letter, index) =>
-        (glyphs[letter] ?? []).flatMap((row, y) =>
-          [...row].map((dot, x) =>
-            dot === "1" ? (
-              <circle
-                key={`${index}-${x}-${y}`}
-                cx={index * 6 + x + 0.5}
-                cy={y + 0.5}
-                r={0.42}
-              />
-            ) : null,
+      <svg
+        aria-hidden="true"
+        className="film-edge-dots"
+        fill="currentColor"
+        viewBox={`0 0 ${Math.max(1, letters.length * 6 - 1)} 7`}
+      >
+        {letters.map((letter, index) =>
+          (filmGlyphs[letter] ?? []).flatMap((row, y) =>
+            [...row].map((dot, x) =>
+              dot === "1" ? (
+                <circle
+                  key={`${index}-${x}-${y}`}
+                  cx={index * 6 + x + 0.5}
+                  cy={y + 0.5}
+                  r={0.42}
+                />
+              ) : null,
+            ),
           ),
-        ),
-      )}
-    </svg>
+        )}
+      </svg>
+      {enabled || activated ? (
+        <span className="film-edge-hdr">
+          {letters.map((letter, index) => {
+            const glyph = FILM_GLYPH_ORDER.indexOf(letter);
+
+            return (
+              <span key={index} className="film-edge-hdr-cell">
+                {glyph >= 0 ? (
+                  <img
+                    ref={(image) => {
+                      if (image) images.current.set(index, image);
+                      else images.current.delete(index);
+                    }}
+                    alt=""
+                    data-hdr-active="true"
+                    decoding="async"
+                    draggable={false}
+                    src={FILM_EDGE_HDR_SRC}
+                    style={{
+                      width: `${((FILM_GLYPH_COLUMNS * 6) / 5) * 100}%`,
+                      height: `${((FILM_GLYPH_ROWS * 8) / 7) * 100}%`,
+                      left: `${((-(glyph % FILM_GLYPH_COLUMNS) * 6) / 5) * 100}%`,
+                      top: `${((-Math.floor(glyph / FILM_GLYPH_COLUMNS) * 8) / 7) * 100}%`,
+                    }}
+                  />
+                ) : null}
+              </span>
+            );
+          })}
+        </span>
+      ) : null}
+    </span>
   );
 }

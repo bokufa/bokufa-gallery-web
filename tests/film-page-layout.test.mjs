@@ -10,7 +10,7 @@ test("film page uses an independent contact-sheet layout without location descri
   assert(!filmPage.includes("PhotoMasonry"));
   assert(!filmPage.includes("metadata.city"));
   assert(!filmPage.includes("description"));
-  assert.match(filmPage, /film-sprockets/);
+  assert.match(filmPage, /format === "135" \? <FilmStripBase portrait=\{portrait\}/);
   assert.match(filmPage, /film-edge-copy/);
   assert.match(filmPage, /film-contact-grid/);
 });
@@ -32,4 +32,18 @@ test("film page receives the LED table and the same floating chrome as the map",
   assert.match(filmPage, /preloadFilmImage\(mediumFile\.url\)/);
   assert.match(filmPage, /new IntersectionObserver/);
   assert.match(filmPage, /setPreviewUrl\(mediumFile\.url\)/);
+});
+
+test("every film-page visit fades the mounted table, including cached returns and delayed photo loads", () => {
+  const canvas = styles.match(/\.film-contact-page > \.film-canvas\s*\{([^}]+)\}/)?.[1];
+  assert.match(canvas, /animation:\s*film-page-enter 600ms ease-in-out backwards/);
+  assert(!canvas.includes("forwards"), "do not retain an opacity compositing layer over native HDR after entry");
+  const keyframes = styles.match(/@keyframes film-page-enter\s*\{([\s\S]*?)\n\}/)?.[1];
+  assert.match(keyframes, /from\s*\{\s*opacity: 0/);
+  assert.match(keyframes, /to\s*\{\s*opacity: 1/);
+  assert(!/filter|transform/.test(keyframes), "entry must not blur HDR pixels or disturb drag coordinates");
+  assert.match(filmPage, /photos\.length \? \(\s*<FilmCanvas>/, "start the entry on actual canvas mount, not on an earlier loading placeholder");
+  assert(!filmPage.includes("<FilmCanvas key="), "HDR and image updates must not remount the animated canvas");
+  assert.match(root, /film-light-table[^`]*duration-\[600ms\] ease-in-out/);
+  assert.match(styles, /@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.film-contact-page > \.film-canvas\s*\{\s*animation: none/);
 });

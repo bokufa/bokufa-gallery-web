@@ -43,6 +43,12 @@ function fixture(t, count = 100, load) {
     append(...nodes) { for (const node of nodes) { node.remove(); node.parentElement = this; this.childNodes.push(node); } }
     replaceChildren(...nodes) { for (const node of [...this.childNodes]) node.remove(); this.append(...nodes); }
     remove() { if (this.parentElement) { const children = this.parentElement.childNodes; children.splice(children.indexOf(this), 1); this.parentElement = null; } }
+    replaceWith(other) {
+      const parent = this.parentElement;
+      const index = parent.childNodes.indexOf(this);
+      other.remove(); other.parentElement = parent; parent.childNodes[index] = other; this.parentElement = null;
+    }
+    get childElementCount() { return this.childNodes.length; }
     cloneNode(deep) {
       if (this.root && deep) metrics.rootDeepClones++;
       const copy = new Element(this.tagName);
@@ -54,6 +60,7 @@ function fixture(t, count = 100, load) {
       return copy;
     }
     matches(selector) {
+      if (selector === '.film-edge-label') return this.attrs.get('class').split(' ').includes('film-edge-label');
       if (selector === '.film-frame') return this.attrs.get('class').split(' ').includes('film-frame');
       if (selector === '.film-image-window') return this.attrs.get('class').split(' ').includes('film-image-window');
       if (selector.includes('img')) {
@@ -96,7 +103,10 @@ function fixture(t, count = 100, load) {
     const image = new Element('img');
     Object.assign(image.dataset, { bufferActive: 'true', filmPhotoId: String(i + 1), filmThumbSrc: `thumb-${i + 1}`, filmLargeSrc: `large-${i + 1}`, filmHdrSrc: `hdr-${i + 1}`, filmHdrEnabled: 'false' });
     image.src = `medium-${i + 1}`;
-    window.append(image); frame.append(window); source.append(frame);
+    const label = new Element('span', 'film-edge-label');
+    label.setAttribute('data-edge-text', 'FUJI'); label.setAttribute('data-edge-hdr-ready', 'false');
+    label.append(new Element('svg'));
+    window.append(image); frame.append(window, label); source.append(frame);
   }
   const viewport = new Element();
   const frame = new Element(); frame.outer = true;
@@ -143,10 +153,18 @@ test('release upgrades only the final sample and hidden frames release their HDR
   await tick(); f.paint(); f.paint();
   assert.deepEqual(f.calls, ['2']);
   const second = f.mirror.childNodes[1];
+  const layers = second.querySelectorAll('.film-image-window img[data-buffer-active="true"]');
+  assert.equal(layers.length, 2, 'old image remains opaque throughout the dissolve');
+  assert.equal(layers[0].src, 'thumb-2');
+  assert.equal(layers[0].style.opacity, '1');
+  assert.equal(layers[1].style.opacity, '1');
+  assert.equal(layers[1].style.transition, 'opacity 600ms ease-in-out');
+  f.idle();
   assert.equal(second.querySelector('.film-image-window img[data-buffer-active="true"]').src, 'large-2');
   f.source.childNodes[1].querySelector('.film-image-window img[data-buffer-active="true"]').dataset.filmHdrEnabled = 'true';
   const beforeReads = f.metrics.reads;
   f.mutate(); f.paint(); f.idle(); await tick(); f.paint(); f.paint();
+  f.idle();
   assert.equal(f.metrics.reads, beforeReads, 'image/HDR changes do not remeasure source layout');
   assert.equal(second.querySelector('.film-image-window img[data-buffer-active="true"]').src, 'hdr-2');
   f.emit('pointerdown', 750); f.emit('pointermove', 500); f.paint();
@@ -161,6 +179,7 @@ test('a late detail result cannot replace a different sample, and closing cancel
   f.emit('pointerdown'); f.emit('pointermove', 750); f.paint(); f.emit('pointerup', 750); f.idle();
   resolvers.get('1')('large-1'); resolvers.get('2')('large-2');
   await tick(); f.paint(); f.paint();
+  f.idle();
   assert.equal(f.mirror.childNodes[0].querySelector('.film-image-window img[data-buffer-active="true"]').src, 'thumb-1');
   assert.equal(f.mirror.childNodes[1].querySelector('.film-image-window img[data-buffer-active="true"]').src, 'large-2');
   f.controller.sceneChanged();
@@ -169,4 +188,25 @@ test('a late detail result cannot replace a different sample, and closing cancel
   assert.equal(f.timers.size, 0);
   assert.equal(f.glass.childNodes.length, 0);
   assert.equal(f.glass.listeners.size, 0);
+});
+
+test('loupe mirrors HDR lettering readiness and enable/disable changes without remeasuring the scene', t => {
+  const f = fixture(t, 2);
+  const label = f.source.childNodes[0].querySelector('.film-edge-label');
+  const atlas = label.childNodes[0].cloneNode(false);
+  atlas.setAttribute('class', 'film-edge-hdr'); label.append(atlas);
+  label.setAttribute('data-edge-hdr-ready', 'true');
+  const beforeReads = f.metrics.reads;
+  f.mutate();
+  let copy = f.mirror.childNodes[0].querySelector('.film-edge-label');
+  assert.equal(copy.dataset.edgeHdrReady, 'true');
+  assert.equal(copy.childElementCount, 2);
+  const current = copy;
+  f.mutate();
+  assert.equal(f.mirror.childNodes[0].querySelector('.film-edge-label'), current, 'unchanged glyphs are not cloned again');
+  label.setAttribute('data-edge-hdr-ready', 'false'); atlas.remove(); f.mutate();
+  copy = f.mirror.childNodes[0].querySelector('.film-edge-label');
+  assert.equal(copy.dataset.edgeHdrReady, 'false');
+  assert.equal(copy.childElementCount, 1);
+  assert.equal(f.metrics.reads, beforeReads);
 });

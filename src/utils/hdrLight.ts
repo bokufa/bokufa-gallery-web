@@ -70,7 +70,7 @@ export function mountHdrLight(
       colorAttachments: [
         {
           view: context.getCurrentTexture().createView(),
-          clearValue: { r: 1.3, g: 1.3, b: 1.3, a: 1 },
+          clearValue: { r: 1.1, g: 1.1, b: 1.1, a: 1 },
           loadOp: "clear",
           storeOp: "store",
         },

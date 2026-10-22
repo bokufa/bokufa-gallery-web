@@ -173,7 +173,7 @@ test('controlled single-photo toggle cannot write the background table preferenc
 const { default: BufferedPhotoImage } = await import(await compile('../src/components/BufferedPhotoImage.tsx', {
   react: reactUrl, 'react/jsx-runtime': jsxUrl,
 }));
-test('actual DOM layers retain the old opaque photo until new-node decode and two paint frames', async t => {
+function bufferedFixture(t) {
   const render = harness(t, BufferedPhotoImage);
   const previousRaf = globalThis.requestAnimationFrame;
   const previousCancel = globalThis.cancelAnimationFrame;
@@ -184,35 +184,170 @@ test('actual DOM layers retain the old opaque photo until new-node decode and tw
   t.after(() => { globalThis.requestAnimationFrame = previousRaf; globalThis.cancelAnimationFrame = previousCancel; });
   const paint = () => { const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(fn => fn()); };
   const nodes = new Map();
+  let tree;
+  let props = { src: 'sdr-dom', hdrSrc: 'hdr-dom' };
   const commit = tree => {
+    for (const [key, node] of nodes) {
+      if (!tree.props.children.some(child => child.key === key)) {
+        node.ref(null);
+        nodes.delete(key);
+      }
+    }
     for (const child of tree.props.children) {
       if (!nodes.has(child.key)) {
         let resolve;
         const promise = new Promise(done => { resolve = done; });
         nodes.set(child.key, { decode: () => promise, resolve });
       }
+      nodes.get(child.key).ref = child.props.ref;
       child.props.ref(nodes.get(child.key));
     }
   };
-  let tree = render({ src: 'sdr-dom', hdrSrc: 'hdr-dom' });
-  commit(tree);
-  tree.props.children[0].props.onLoad({ currentTarget: nodes.get('sdr-dom') });
-  nodes.get('sdr-dom').resolve();
-  await tick();
-  render({ src: 'hdr-dom', hdrSrc: 'hdr-dom' });
-  tree = render({ src: 'hdr-dom', hdrSrc: 'hdr-dom' });
-  commit(tree);
+  const draw = (src = props.src) => {
+    props = { ...props, src };
+    // Flush the synchronous effect state changes just as React does.
+    for (let i = 0; i < 3; i++) { tree = render(props); commit(tree); }
+    return tree;
+  };
+  const layer = url => tree.props.children.find(layer => layer.key === url);
+  const load = async url => {
+    layer(url).props.onLoad({ currentTarget: nodes.get(url) });
+    nodes.get(url).resolve();
+    await tick();
+    draw();
+  };
+  const end = url => layer(url).props.onTransitionEnd({ target: nodes.get(url), currentTarget: nodes.get(url), propertyName: 'opacity' });
+  draw();
+  return { draw, load, paint, layer, end };
+}
+
+test('DOM layers fade only after decode and two paints, keeping the old image for the full transition', async t => {
+  const f = bufferedFixture(t);
+  await f.load('sdr-dom');
+  let tree = f.draw('hdr-dom');
   assert.equal(tree.props.children.length, 2);
-  assert.equal(tree.props.children.find(layer => layer.key === 'sdr-dom').props.style.opacity, 1);
-  const pending = tree.props.children.find(layer => layer.key === 'hdr-dom');
-  assert.equal(pending.props.style.opacity, 0);
-  pending.props.onLoad({ currentTarget: nodes.get('hdr-dom') });
-  nodes.get('hdr-dom').resolve();
-  await tick();
-  tree = render({ src: 'hdr-dom', hdrSrc: 'hdr-dom' });
-  assert.equal(tree.props.children.length, 2, 'old native image survives the activation commit');
-  assert.equal(tree.props.children.find(layer => layer.key === 'hdr-dom').props.style.opacity, 1);
-  paint(); paint();
-  tree = render({ src: 'hdr-dom', hdrSrc: 'hdr-dom' });
+  assert.equal(f.layer('sdr-dom').props.style.opacity, 1);
+  assert.equal(f.layer('hdr-dom').props.style.opacity, 0);
+  await f.load('hdr-dom');
+  assert.equal(f.layer('hdr-dom').props.style.opacity, 0);
+  f.paint(); f.draw();
+  assert.equal(f.layer('hdr-dom').props.style.opacity, 0);
+  f.paint(); tree = f.draw();
+  assert.equal(f.layer('hdr-dom').props.style.opacity, 1);
+  assert.equal(f.layer('sdr-dom').props.style.opacity, 1, 'old image is never faded to transparent');
+  assert.equal(tree.props.children.length, 2, 'two paint frames start, rather than finish, the dissolve');
+  f.end('hdr-dom'); tree = f.draw();
   assert.deepEqual(tree.props.children.map(layer => layer.key), ['hdr-dom']);
+
+  // Cached reverse and repeated forward switches must still paint a zero layer.
+  for (const target of ['sdr-dom', 'hdr-dom', 'sdr-dom']) {
+    const base = target === 'sdr-dom' ? 'hdr-dom' : 'sdr-dom';
+    f.draw(target);
+    assert.equal(f.layer(base).props.style.opacity, 1);
+    await f.load(target);
+    assert.equal(f.layer(target).props.style.opacity, 0);
+    f.paint(); f.draw(); f.paint(); tree = f.draw();
+    assert.equal(tree.props.children.length, 2);
+    assert.equal(f.layer(target).props.style.opacity, 1);
+    f.end(target); tree = f.draw();
+    assert.deepEqual(tree.props.children.map(layer => layer.key), [target]);
+  }
+});
+
+test('rapid HDR reversal finishes the visible fade then dissolves back without discarding either opaque base', async t => {
+  const f = bufferedFixture(t);
+  await f.load('sdr-dom');
+  f.draw('hdr-dom'); await f.load('hdr-dom');
+  f.paint(); f.draw(); f.paint(); f.draw();
+  f.draw('sdr-dom');
+  assert.equal(f.layer('sdr-dom').props.style.opacity, 1);
+  assert.equal(f.layer('hdr-dom').props.style.opacity, 1, 'a reverse click never tears down a running transition');
+  f.end('hdr-dom'); f.draw();
+  assert.equal(f.layer('sdr-dom').props.style.opacity, 0);
+  assert.equal(f.layer('hdr-dom').props.style.opacity, 1);
+  f.paint(); f.draw(); f.paint(); f.draw();
+  f.end('sdr-dom');
+  assert.deepEqual(f.draw().props.children.map(layer => layer.key), ['sdr-dom']);
+});
+
+test('failed or stale replacement decodes cannot hide the visible base', async t => {
+  const f = bufferedFixture(t);
+  await f.load('sdr-dom');
+  f.draw('hdr-dom');
+  assert.equal(f.layer('hdr-dom').props.style.opacity, 0, 'unresolved or failed loads stay transparent');
+  const loading = f.load('hdr-dom');
+  f.draw('sdr-dom');
+  await loading;
+  f.paint(); f.draw(); f.paint();
+  assert.equal(f.layer('sdr-dom').props.style.opacity, 1);
+  assert.equal(f.layer('hdr-dom'), undefined, 'an old request cannot activate after opt-out');
+});
+
+const { default: HdrLightPanel } = await import(await compile('../src/components/HdrLightPanel.tsx', {
+  react: reactUrl, 'react/jsx-runtime': jsxUrl, '../contexts/HdrContext': contextUrl,
+  '../utils/hdrLight': dataUrl('export const mountHdrLight = (...args) => globalThis.__mountLight(...args);'),
+}));
+test('LED opt-out retains the rendered surface for its fade; toggling back does not recreate the GPU device', t => {
+  let mounts = 0;
+  let stops = 0;
+  let ready;
+  globalThis.__hdrTable = { enabled: false };
+  globalThis.__mountLight = (_canvas, onReady) => { mounts++; ready = onReady; return () => stops++; };
+  t.after(() => { delete globalThis.__hdrTable; delete globalThis.__mountLight; });
+  const render = harness(t, HdrLightPanel);
+  let tree = render();
+  tree.props.ref.current = {};
+  assert.equal(mounts, 0, 'SDR-only visits never allocate a GPU light');
+  globalThis.__hdrTable.enabled = true;
+  render(); render();
+  assert.equal(mounts, 1);
+  ready(true); tree = render();
+  assert.equal(tree.props['data-ready'], true);
+  globalThis.__hdrTable.enabled = false;
+  tree = render();
+  assert.equal(tree.props['data-ready'], false);
+  assert.equal(stops, 0, 'opt-out must not clear the canvas during its closing fade');
+  globalThis.__hdrTable.enabled = true;
+  tree = render();
+  assert.equal(tree.props['data-ready'], true);
+  assert.equal(mounts, 1);
+  assert.equal(stops, 0);
+});
+
+const { default: FilmEdgeMark } = await import(await compile('../src/components/FilmEdgeMark.tsx', {
+  react: reactUrl, 'react/jsx-runtime': jsxUrl, '../contexts/HdrContext': contextUrl,
+  '../utils/filmGlyphs': await compile('../src/utils/filmGlyphs.ts'),
+}));
+test('decoded HDR edge nodes survive opt-out and are ready for every reverse light fade', async t => {
+  const globals = new Map();
+  const frames = new Map();
+  let id = 0;
+  for (const [name, value] of Object.entries({
+    requestAnimationFrame: callback => { frames.set(++id, callback); return id; },
+    cancelAnimationFrame: id => frames.delete(id),
+  })) { globals.set(name, globalThis[name]); globalThis[name] = value; }
+  globalThis.__hdrTable = { enabled: false };
+  const render = harness(t, FilmEdgeMark);
+  t.after(() => { for (const [name, value] of globals) globalThis[name] = value; delete globalThis.__hdrTable; });
+  const paint = () => { const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(fn => fn()); };
+  let decodes = 0;
+  let tree = render({ text: 'FUJI' });
+  assert.equal(tree.props.children[1], null);
+  globalThis.__hdrTable.enabled = true;
+  tree = render({ text: 'FUJI' });
+  const nodes = tree.props.children[1].props.children.map(cell => ({ image: cell.props.children, node: { decode: () => { decodes++; return Promise.resolve(); } } }));
+  nodes.forEach(({image, node}) => image.props.ref(node));
+  tree = render({ text: 'FUJI' });
+  assert.equal(tree.props['data-edge-hdr-ready'], false);
+  await tick(); paint(); paint(); tree = render({ text: 'FUJI' });
+  assert.equal(tree.props['data-edge-hdr-ready'], true);
+  assert.equal(decodes, 4);
+  globalThis.__hdrTable.enabled = false;
+  tree = render({ text: 'FUJI' });
+  assert.equal(tree.props['data-edge-hdr-ready'], false);
+  assert.equal(tree.props.children[1].props.children.length, 4, 'closing fade retains the atlas nodes');
+  globalThis.__hdrTable.enabled = true;
+  tree = render({ text: 'FUJI' });
+  assert.equal(tree.props['data-edge-hdr-ready'], true);
+  assert.equal(decodes, 4, 'repeated switches do not decode again or recreate glyphs');
 });

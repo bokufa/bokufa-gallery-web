@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import PhotoModal from "../components/PhotoModal";
 import FilmCanvas from "../components/FilmCanvas";
 import FilmEdgeMark from "../components/FilmEdgeMark";
+import FilmStripBase from "../components/FilmStripBase";
 import { fetchPhotos } from "../services/photos";
 import { cameraIdentity } from "../utils/cameraIdentity";
 import { filmEdgeLabel, filmGeometry } from "../utils/filmGeometry";
@@ -20,7 +21,6 @@ const loadedFilmImageIds = new Set<number>();
 const loadedFilmMediumIds = new Set<number>();
 const filmMediumLoads = new Map<string, Promise<void>>();
 const revealedFilmFrameIds = new Set<number>();
-const sprockets = Array.from({ length: 8 }, (_, index) => index);
 
 function preloadFilmImage(url: string) {
   const existingLoad = filmMediumLoads.get(url);
@@ -47,19 +47,6 @@ function preloadFilmImage(url: string) {
   filmMediumLoads.set(url, load);
 
   return load;
-}
-
-function FilmSprockets({ edge }: { edge: "start" | "end" }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={`film-sprockets film-sprockets-${edge}`}
-    >
-      {sprockets.map((index) => (
-        <span key={index} />
-      ))}
-    </span>
-  );
 }
 
 function FilmFrame({
@@ -191,12 +178,12 @@ function FilmFrame({
       onAnimationEnd={() => setIsEntering(false)}
       onClick={() => onOpen(photo)}
     >
+      {format === "135" ? <FilmStripBase portrait={portrait} /> : null}
       {format === "120" ? (
         <span aria-hidden="true" className="film-fuji-mark">
           <FilmEdgeMark text="FUJI" />
         </span>
       ) : null}
-      {format === "135" ? <FilmSprockets edge="start" /> : null}
       <span aria-hidden="true" className="film-edge-copy film-edge-copy-start">
         <FilmEdgeMark text={edgeLabel} />
       </span>
@@ -226,7 +213,6 @@ function FilmFrame({
       <span aria-hidden="true" className="film-edge-copy film-edge-copy-end">
         <FilmEdgeMark text={`▶ ${edgeLabel}`} />
       </span>
-      {format === "135" ? <FilmSprockets edge="end" /> : null}
     </button>
   );
 }

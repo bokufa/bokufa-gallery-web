@@ -13,8 +13,11 @@ type Pending = {
   url: string;
   version: number;
   decoded: boolean;
+  started?: boolean;
+  cancelFade?: () => void;
 };
 type Entry = {
+  edgeState?: string;
   source: HTMLElement;
   original: HTMLImageElement;
   frame: HTMLElement;
@@ -91,10 +94,14 @@ export function mountFilmLoupe({
 
     paints.add(id);
   };
-  const invalidate = (entry: Entry) => {
+  const invalidate = (entry: Entry, discard = false) => {
     entry.version++;
-    entry.pending?.image.remove();
-    entry.pending = undefined;
+    // A preference change queues behind a running dissolve, not through it.
+    if (!entry.pending?.started || discard) {
+      entry.pending?.cancelFade?.();
+      entry.pending?.image.remove();
+      entry.pending = undefined;
+    }
     entry.requested = undefined;
     entry.readyUrl = undefined;
   };
@@ -103,6 +110,7 @@ export function mountFilmLoupe({
 
     if (
       !pending?.decoded ||
+      pending.started ||
       drag ||
       !entry.visible ||
       pending.version !== entry.version
@@ -110,17 +118,53 @@ export function mountFilmLoupe({
       return;
     const previous = entry.image;
 
-    pending.image.style.opacity = "1";
-    entry.image = pending.image;
-    entry.pending = undefined;
-    paint(() => paint(() => previous.remove()));
+    pending.started = true;
+    const finish = () => {
+      if (!active || entry.pending !== pending) return;
+      pending.cancelFade?.();
+      previous.remove();
+      entry.image = pending.image;
+      entry.pending = undefined;
+      if (entry.readyUrl && !drag) {
+        const url = entry.readyUrl;
+
+        entry.readyUrl = undefined;
+        upgrade(entry, url);
+      }
+    };
+    const ended = (event: TransitionEvent) => {
+      if (event.target === pending.image && event.propertyName === "opacity")
+        finish();
+    };
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    pending.image.addEventListener("transitionend", ended);
+    pending.cancelFade = () => {
+      clearTimeout(timer);
+      pending.image.removeEventListener("transitionend", ended);
+    };
+    paint(() =>
+      paint(() => {
+        if (entry.pending !== pending) return;
+        pending.image.style.opacity = "1";
+        timer = setTimeout(finish, 750);
+      }),
+    );
   };
   const upgrade = (entry: Entry, url: string) => {
+    if (entry.pending?.started) {
+      entry.readyUrl = url;
+
+      return;
+    }
     if (entry.image.src === url || entry.pending?.url === url) return;
     entry.pending?.image.remove();
     const image = entry.image.cloneNode(false) as HTMLImageElement;
 
     image.style.opacity = "0";
+    image.style.position = "absolute";
+    image.style.zIndex = "2";
+    image.style.transition = "opacity 600ms ease-in-out";
     image.loading = "eager";
     image.src = url;
     image.dataset.hdrActive = String(
@@ -264,7 +308,7 @@ export function mountFilmLoupe({
       sourceFrames.some((element, i) => element !== entries[i].source);
 
     if (changed) {
-      entries.forEach(invalidate);
+      entries.forEach((entry) => invalidate(entry, true));
       mirror.replaceChildren();
       entries = sourceFrames.flatMap((element) => {
         const original = element.querySelector<HTMLImageElement>(imageSelector);
@@ -292,6 +336,7 @@ export function mountFilmLoupe({
 
         image.src = preview;
         image.style.opacity = "1";
+        image.style.zIndex = "1";
         image.dataset.hdrActive = "false";
         mirror.append(copy);
 
@@ -322,6 +367,40 @@ export function mountFilmLoupe({
         if (nextIdentity !== entry.identity) invalidate(entry);
         entry.original = original;
         entry.identity = nextIdentity;
+        // React hooks do not run on cloned DOM. Copy the native HDR glyph state
+        // only when labels change; never measure, decode or rebuild them on drag.
+        const labels = [
+          ...entry.source.querySelectorAll<HTMLElement>(".film-edge-label"),
+        ];
+        const edgeState = labels
+          .map(
+            (label) =>
+              `${label.dataset.edgeText}:${label.dataset.edgeHdrReady}:${label.childElementCount}`,
+          )
+          .join("|");
+
+        if (edgeState !== entry.edgeState) {
+          const copies = [
+            ...entry.frame.querySelectorAll<HTMLElement>(".film-edge-label"),
+          ];
+
+          labels.forEach((label, index) => {
+            const copy = copies[index];
+
+            // Preserve the same native atlas nodes so CSS can reverse a fade.
+            if (
+              copy &&
+              copy.dataset.edgeText === label.dataset.edgeText &&
+              copy.childElementCount === label.childElementCount
+            ) {
+              copy.setAttribute(
+                "data-edge-hdr-ready",
+                label.dataset.edgeHdrReady ?? "false",
+              );
+            } else copy?.replaceWith(label.cloneNode(true));
+          });
+          entry.edgeState = edgeState;
+        }
       }
     }
   };
@@ -372,7 +451,7 @@ export function mountFilmLoupe({
       entry.frame.style.display = visible ? "block" : "none";
       if (!visible) {
         // Do not retain an 8K HDR texture for every frame the loupe has visited.
-        invalidate(entry);
+        invalidate(entry, true);
         if (entry.image.src !== entry.preview) entry.image.src = entry.preview;
         entry.image.dataset.hdrActive = "false";
       }
@@ -463,6 +542,8 @@ export function mountFilmLoupe({
       "class",
       "data-film-hdr-enabled",
       "data-film-hdr-src",
+      "data-edge-hdr-ready",
+      "data-edge-text",
     ],
   });
   resize.observe(viewport);
@@ -484,7 +565,7 @@ export function mountFilmLoupe({
       cancelAnimationFrame(animationFrame);
       paints.forEach(cancelAnimationFrame);
       if (qualityTimer !== undefined) clearTimeout(qualityTimer);
-      entries.forEach(invalidate);
+      entries.forEach((entry) => invalidate(entry, true));
       observer.disconnect();
       resize.disconnect();
       glass.removeEventListener("pointerdown", pointerDown);

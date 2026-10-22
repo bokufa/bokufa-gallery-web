@@ -8,6 +8,7 @@ import { fetchPhoto } from "../services/photos";
 import { preloadPhotoSource } from "../utils/photoSources";
 import { mountFilmLoupe } from "../utils/filmLoupeController";
 import { useLanguage } from "../contexts/LanguageContext";
+import HdrLightPanel from "./HdrLightPanel";
 
 const detailImages = new Map<string, Promise<string | undefined>>();
 
@@ -102,7 +103,9 @@ export default function FilmLoupe({
         aria-label={t("loupe.glass")}
         className="film-loupe-glass"
         type="button"
-      />
+      >
+        <HdrLightPanel />
+      </button>
       <button
         aria-label={t("loupe.close")}
         className="film-loupe-close"

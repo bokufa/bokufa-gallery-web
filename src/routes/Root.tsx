@@ -86,7 +86,7 @@ export default function Root() {
         <MapPage isActive={isMapSection} overlayActive={isMapSection && !isMapRoute} />
         <div
           aria-hidden="true"
-          className={`film-light-table pointer-events-none fixed inset-0 z-0 transition-opacity duration-500 ease-out ${
+          className={`film-light-table pointer-events-none fixed inset-0 z-0 transition-opacity duration-[600ms] ease-in-out motion-reduce:transition-none ${
             isFilmRoute ? 'opacity-100' : 'opacity-0'
           }`}
         />

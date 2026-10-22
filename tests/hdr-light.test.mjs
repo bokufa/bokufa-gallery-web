@@ -28,7 +28,7 @@ function fixture(mode = 'extended') {
   return { calls, device, canvas: { getContext: () => context }, gpu: { requestAdapter: async () => ({ requestDevice: async () => device }) } };
 }
 
-test('LED panel uses an extended float surface above SDR white and releases it on opt-out', async () => {
+test('LED panel uses an extended float surface above SDR white and releases it on disposal', async () => {
   const { calls, canvas, gpu } = fixture();
   const states = [];
   const stop = mountHdrLight(canvas, ready => states.push(ready), gpu);
@@ -36,6 +36,8 @@ test('LED panel uses an extended float surface above SDR white and releases it o
   assert.equal(calls.config.format, 'rgba16float');
   assert.equal(calls.config.toneMapping.mode, 'extended');
   assert(calls.passes[0].colorAttachments[0].clearValue.r > 1);
+  assert.equal(calls.passes[0].colorAttachments[0].clearValue.r, 1.1, 'comfortable HDR white is lower than the previous 1.3');
+  assert.deepEqual(calls.passes[0].colorAttachments[0].clearValue, { r: 1.1, g: 1.1, b: 1.1, a: 1 });
   assert.equal(calls.submissions.length, 1, 'static panel has no continuous rendering loop');
   assert.deepEqual(states, [true]);
   stop();

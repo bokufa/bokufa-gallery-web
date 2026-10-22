@@ -70,15 +70,27 @@
 }
 
 .film-light-table {
-  background: #fff;
+  background: #fafaf8;
 }
 
 .film-contact-page {
   isolation: isolate;
 }
 
+@keyframes film-page-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Start when the table mounts, even if fetching its photos took longer than
+   the route background fade. Ordinary image/HDR updates never remount it.
+   No persistent opacity layer, blur or transform on the native HDR content. */
+.film-contact-page > .film-canvas {
+  animation: film-page-enter 600ms ease-in-out backwards;
+}
+
 .film-canvas {
-  --film-edge-ink: #efa927;
+  --film-edge-ink: #feb51e;
   --film-side-inset: 100px;
   --film-gap: 20px;
   position: relative;
@@ -123,14 +135,27 @@
   z-index: -1;
   inset: calc(-1 * var(--film-board-margin));
   pointer-events: none;
-  background-color: #fff;
+  background-color: #fafaf8;
   background-image:
-    radial-gradient(ellipse at 50% 42%, #fff 0 48%, #fbfbfa 72%, #f2f2f0 100%),
+    radial-gradient(ellipse at 50% 42%, #fafaf8 0 48%, #f6f6f4 72%, #ededea 100%),
     repeating-linear-gradient(0deg, rgba(40, 40, 38, 0.012) 0 1px, transparent 1px 5px),
     repeating-linear-gradient(90deg, rgba(40, 40, 38, 0.01) 0 1px, transparent 1px 7px);
   box-shadow:
     inset 0 0 170px rgba(0, 0, 0, 0.1),
     inset 0 0 32px rgba(0, 0, 0, 0.035);
+  transition: opacity 600ms ease-in-out;
+}
+
+.film-canvas-content::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: calc(-1 * var(--film-board-margin));
+  pointer-events: none;
+  background-image: radial-gradient(ellipse at 50% 42%, transparent 0 60%, rgba(0, 0, 0, 0.015) 100%);
+  box-shadow: inset 0 0 170px rgba(0, 0, 0, 0.045), inset 0 0 32px rgba(0, 0, 0, 0.015);
+  opacity: 0;
+  transition: opacity 600ms ease-in-out;
 }
 
 .film-canvas-controls {
@@ -188,7 +213,7 @@
   appearance: none;
   border: 0;
   border-radius: 50%;
-  background: #fff;
+  background: #fafaf8;
   contain: layout paint;
   cursor: grab;
   touch-action: none;
@@ -216,7 +241,8 @@
   pointer-events: none;
 }
 
-.film-loupe-scene::before {
+.film-loupe-scene::before,
+.film-loupe-scene::after {
   display: none;
 }
 
@@ -332,11 +358,12 @@
   appearance: none;
   padding: 0;
   overflow: hidden;
-  color: var(--film-edge-ink, #efa927);
+  color: var(--film-edge-ink, #feb51e);
   background: #000;
   border: 0;
   border-radius: 0;
   box-shadow: none;
+  transition: color 600ms ease-in-out;
 }
 
 .film-frame:focus-visible {
@@ -344,28 +371,17 @@
   outline-offset: 3px;
 }
 
-.film-sprockets {
+.film-frame-135 {
+  background: transparent;
+}
+
+.film-strip-base {
   position: absolute;
-  left: calc(var(--film-mm) * 0.95);
-  right: calc(var(--film-mm) * 0.95);
-  display: grid;
-  grid-template-columns: repeat(8, calc(var(--film-mm) * 2.8));
-  justify-content: space-between;
-  height: calc(var(--film-mm) * 2);
-}
-
-.film-sprockets-start {
-  top: calc(var(--film-mm) * 0.75);
-}
-
-.film-sprockets-end {
-  bottom: calc(var(--film-mm) * 0.75);
-}
-
-.film-sprockets > span {
+  inset: 0;
   display: block;
-  background: #fff;
-  border-radius: calc(var(--film-mm) * 0.25);
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .film-edge-copy {
@@ -376,16 +392,52 @@
   pointer-events: none;
 }
 
+.film-edge-label {
+  --film-edge-height: calc(var(--film-mm) * 1.15);
+  position: relative;
+  display: block;
+  height: var(--film-edge-height);
+  flex-shrink: 0;
+}
+
 .film-edge-dots {
   display: block;
-  width: auto;
-  height: calc(var(--film-mm) * 1.15);
+  width: 100%;
+  height: 100%;
   overflow: visible;
-  transition: color 180ms ease-out;
+}
+
+.film-edge-hdr {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  gap: calc(var(--film-edge-height) / 7);
+  opacity: 0;
+  transition: opacity 600ms ease-in-out;
+}
+
+.film-edge-hdr-cell {
+  position: relative;
+  flex: 0 0 calc(var(--film-edge-height) * 5 / 7);
+  height: 100%;
+  overflow: hidden;
+}
+
+.film-edge-hdr-cell img {
+  position: absolute;
+  display: block;
+  max-width: none;
+  object-fit: fill;
+  /* Native HDR pixels: only the parent layer is faded, never tinted or filtered. */
+  dynamic-range-limit: no-limit;
+}
+
+.film-edge-label[data-edge-hdr-ready="true"] > .film-edge-hdr {
+  opacity: 1;
 }
 
 .film-canvas[data-hdr-enabled="true"] {
-  --film-edge-ink: #ffc24d;
+  --film-edge-ink: #ffc625;
 }
 
 .film-fuji-mark {
@@ -419,26 +471,6 @@
 
 .film-frame-120 .film-edge-copy-end {
   top: 80%;
-}
-
-.film-frame-portrait .film-sprockets {
-  top: calc(var(--film-mm) * 0.95);
-  bottom: calc(var(--film-mm) * 0.95);
-  left: auto;
-  right: auto;
-  width: calc(var(--film-mm) * 2);
-  height: auto;
-  grid-template-columns: 1fr;
-  grid-template-rows: repeat(8, calc(var(--film-mm) * 2.8));
-  align-content: space-between;
-}
-
-.film-frame-portrait .film-sprockets-start {
-  left: calc(var(--film-mm) * 0.75);
-}
-
-.film-frame-portrait .film-sprockets-end {
-  right: calc(var(--film-mm) * 0.75);
 }
 
 .film-frame-portrait .film-edge-copy {
@@ -609,6 +641,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .film-contact-page > .film-canvas {
+    animation: none;
+  }
+
   .atogaki-page-enter {
     animation: none;
   }
@@ -647,7 +683,7 @@
 img[data-hdr-active="true"] { dynamic-range-limit: no-limit; }
 
 .buffered-photo { position: relative; display: block; max-width: 100%; margin: auto; }
-.buffered-photo-layer { transition: none !important; }
+.buffered-photo .buffered-photo-layer { transition: opacity 600ms ease-in-out; }
 .buffered-photo-layer:not(.is-current) { position: absolute; inset: 0; width: 100%; height: 100%; }
 .film-image-window .buffered-photo { width: 100%; height: 100%; }
 
@@ -660,12 +696,14 @@ img[data-hdr-active="true"] { dynamic-range-limit: no-limit; }
   pointer-events: none;
   opacity: 0;
   dynamic-range-limit: no-limit;
+  transition: opacity 600ms ease-in-out;
 }
 
 .film-hdr-light[data-ready="true"] { opacity: 1; }
 
 .film-canvas[data-hdr-enabled="true"] .film-canvas-content::before {
-  background-color: transparent;
-  background-image: radial-gradient(ellipse at 50% 42%, transparent 0 60%, rgba(0, 0, 0, 0.015) 100%);
-  box-shadow: inset 0 0 170px rgba(0, 0, 0, 0.045), inset 0 0 32px rgba(0, 0, 0, 0.015);
+  /* Fade the SDR paper/vignette away while the HDR panel lights underneath. */
+  opacity: 0;
 }
+
+.film-canvas[data-hdr-enabled="true"] .film-canvas-content::after { opacity: 1; }
