@@ -15,39 +15,80 @@ import { filmEdgeLabel, filmGeometry } from "../utils/filmGeometry";
 import { useHdr } from "../contexts/HdrContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import BufferedPhotoImage from "../components/BufferedPhotoImage";
-import { preloadPhotoSource } from "../utils/photoSources";
+import { decodePhotoElement, preloadPhotoSource } from "../utils/photoSources";
 import useFilmVisibility from "../hooks/useFilmVisibility";
+import {
+  filmLoupeDetailFile,
+  filmPreviewFile,
+  filmSdrPreview,
+  filmTableDetailFile,
+} from "../utils/filmPhotoSources";
+import { useFilmDetailQuality } from "../contexts/FilmQualityContext";
 
 const loadedFilmImageIds = new Set<number>();
-const loadedFilmMediumIds = new Set<number>();
-const filmMediumLoads = new Map<string, Promise<void>>();
+const loadedFilmPreviewUrls = new Set<string>();
 const revealedFilmFrameIds = new Set<number>();
 
-function preloadFilmImage(url: string) {
-  const existingLoad = filmMediumLoads.get(url);
+function FilmDetailOverlay({
+  file,
+  hdr,
+  photo,
+}: {
+  file: NonNullable<Photo["medium_file"]>;
+  hdr: boolean;
+  photo: Photo;
+}) {
+  const imageRef = useRef<HTMLImageElement>(null);
+  const decodeRef = useRef<AbortController>();
+  const [ready, setReady] = useState(false);
+  const loupe = filmLoupeDetailFile(photo, hdr);
 
-  if (existingLoad) return existingLoad;
+  useEffect(() => {
+    setReady(false);
+    decodeRef.current?.abort();
 
-  const load = new Promise<void>((resolve, reject) => {
-    const image = new Image();
+    return () => decodeRef.current?.abort();
+  }, [file.url]);
 
-    image.decoding = "async";
-    image.onload = () => {
-      image
-        .decode()
-        .catch(() => undefined)
-        .finally(resolve);
-    };
-    image.onerror = () => reject(new Error(`Unable to load ${url}`));
-    image.src = url;
-  }).catch((error) => {
-    filmMediumLoads.delete(url);
-    throw error;
-  });
+  return (
+    <span
+      aria-hidden="true"
+      className={`film-table-detail-layer ${ready ? "is-ready" : ""}`}
+    >
+      <img
+        ref={imageRef}
+        alt=""
+        data-buffer-active={ready}
+        data-film-hdr-enabled={hdr}
+        data-film-hdr-src={photo.hdr_detail_file?.url || photo.hdr_file?.url}
+        data-film-large-src={photo.large_file?.url}
+        data-film-loupe-src={loupe?.url}
+        data-film-photo-id={photo.id}
+        data-film-thumb-src={photo.thumb_file.url}
+        data-hdr-active={hdr}
+        decoding="async"
+        draggable={false}
+        loading="eager"
+        src={file.url}
+        onLoad={(event) => {
+          const image = event.currentTarget;
+          const controller = new AbortController();
 
-  filmMediumLoads.set(url, load);
-
-  return load;
+          decodeRef.current?.abort();
+          decodeRef.current = controller;
+          void decodePhotoElement(image, 1, controller.signal)
+            .then(() => {
+              if (imageRef.current === image) setReady(true);
+            })
+            .catch(() => undefined)
+            .finally(() => {
+              if (decodeRef.current === controller)
+                decodeRef.current = undefined;
+            });
+        }}
+      />
+    </span>
+  );
 }
 
 function FilmFrame({
@@ -62,13 +103,14 @@ function FilmFrame({
   const frameRef = useRef<HTMLButtonElement>(null);
   const { t } = useLanguage();
   const { enabled: hdrEnabled } = useHdr();
+  const detailSelected = useFilmDetailQuality(photo.id);
   const visible = useFilmVisibility(frameRef);
   const [imageLoaded, setImageLoaded] = useState(() =>
     loadedFilmImageIds.has(photo.id),
   );
   const [previewUrl, setPreviewUrl] = useState(() =>
-    photo.medium_file && loadedFilmMediumIds.has(photo.id)
-      ? photo.medium_file.url
+    loadedFilmPreviewUrls.has(filmSdrPreview(photo).url)
+      ? filmSdrPreview(photo).url
       : photo.thumb_file.url,
   );
   const [isEntering, setIsEntering] = useState(() => {
@@ -82,58 +124,28 @@ function FilmFrame({
   const geometry = filmGeometry(photo);
   const { format, portrait } = geometry;
   const edgeLabel = filmEdgeLabel(stock);
+  const detailFile = filmTableDetailFile(photo, hdrEnabled);
+  const loupeFile = filmLoupeDetailFile(photo, hdrEnabled);
 
   useEffect(() => {
-    const useHdrFile = visible && hdrEnabled && Boolean(photo.hdr_file?.url);
-    const mediumFile = useHdrFile ? photo.hdr_file : photo.medium_file;
-
-    // Drop HDR immediately on opt-out, even when the frame is outside the viewport.
-    if (!useHdrFile)
-      setPreviewUrl(
-        photo.medium_file && loadedFilmMediumIds.has(photo.id)
-          ? photo.medium_file.url
-          : photo.thumb_file.url,
-      );
-
-    if (!mediumFile || mediumFile.url === photo.thumb_file.url) return;
-    if (!visible) return;
-    if (!useHdrFile && loadedFilmMediumIds.has(photo.id)) {
-      setPreviewUrl(mediumFile.url);
+    if (!visible) {
+      setPreviewUrl(photo.thumb_file.url);
 
       return;
     }
-
+    const preview = filmPreviewFile(photo, hdrEnabled);
     let isActive = true;
-    const loadMedium = () => {
-      let hdrReady = false;
 
-      // HDR originals can be large. Keep the normal visible-medium upgrade
-      // while HDR downloads, but never let a late medium replace decoded HDR.
-      if (useHdrFile && photo.medium_file?.url) {
-        const fallback = photo.medium_file;
-
-        void preloadFilmImage(fallback.url)
-          .then(() => {
-            loadedFilmMediumIds.add(photo.id);
-            if (isActive && !hdrReady) setPreviewUrl(fallback.url);
-          })
-          .catch(() => undefined);
-      }
-      void (
-        useHdrFile
-          ? preloadPhotoSource(mediumFile.url, 0)
-          : preloadFilmImage(mediumFile.url)
-      )
-        .then(() => {
-          if (!isActive) return;
-          hdrReady = useHdrFile;
-          if (!useHdrFile) loadedFilmMediumIds.add(photo.id);
-          setPreviewUrl(mediumFile.url);
-        })
-        .catch(() => undefined);
-    };
-
-    loadMedium();
+    // The base stays small; a separately capped overlay handles high zoom.
+    void preloadPhotoSource(preview.url, 0)
+      .then(() => {
+        if (!isActive) return;
+        loadedFilmPreviewUrls.add(preview.url);
+        setPreviewUrl(preview.url);
+      })
+      .catch(() => {
+        if (isActive) setPreviewUrl(photo.thumb_file.url);
+      });
 
     return () => {
       isActive = false;
@@ -142,6 +154,7 @@ function FilmFrame({
     photo.id,
     photo.medium_file,
     photo.hdr_file,
+    photo.hdr_preview_file,
     photo.thumb_file.url,
     hdrEnabled,
     visible,
@@ -151,10 +164,13 @@ function FilmFrame({
     <button
       ref={frameRef}
       aria-label={
-        photo.title ? t("photo.open", { title: photo.title }) : t("film.open", { id: photo.id })
+        photo.title
+          ? t("photo.open", { title: photo.title })
+          : t("film.open", { id: photo.id })
       }
       className={`film-frame film-frame-${format} ${portrait ? "film-frame-portrait" : ""} ${isEntering ? "film-frame-enter" : ""}`}
       data-film-format={format}
+      data-film-photo-id={photo.id}
       style={
         {
           "--film-frame-width": geometry.frameWidth,
@@ -184,14 +200,15 @@ function FilmFrame({
           alt={photo.title || ""}
           className={imageLoaded ? "is-loaded" : ""}
           data-film-hdr-enabled={hdrEnabled}
-          data-film-hdr-src={photo.hdr_file?.url}
+          data-film-hdr-src={photo.hdr_detail_file?.url || photo.hdr_file?.url}
           data-film-large-src={photo.large_file?.url}
+          data-film-loupe-src={loupeFile?.url}
           data-film-photo-id={photo.id}
           data-film-thumb-src={photo.thumb_file.url}
           decoding="async"
           draggable={false}
           fetchPriority={index < 4 ? "high" : "auto"}
-          hdrSrc={photo.hdr_file?.url}
+          hdrSrc={photo.hdr_preview_file?.url}
           loading="eager"
           src={previewUrl}
           suspend={!visible}
@@ -200,6 +217,9 @@ function FilmFrame({
             setImageLoaded(true);
           }}
         />
+        {visible && detailSelected && detailFile ? (
+          <FilmDetailOverlay file={detailFile} hdr={hdrEnabled} photo={photo} />
+        ) : null}
       </span>
       <span aria-hidden="true" className="film-edge-copy film-edge-copy-end">
         <FilmEdgeMark active={visible} text={`▶ ${edgeLabel}`} />

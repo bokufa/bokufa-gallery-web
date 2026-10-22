@@ -14,6 +14,9 @@ export interface Photo {
   medium_file?: File
   large_file?: File
   hdr_file?: File
+  hdr_preview_file?: File
+  hdr_medium_file?: File
+  hdr_detail_file?: File
 }
 
 export interface Shuin {

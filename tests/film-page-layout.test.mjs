@@ -29,11 +29,12 @@ test("film page receives the LED table and the same floating chrome as the map",
   assert(!styles.includes("scale(1.018)"));
   assert(!styles.includes("scale(1.012)"));
   assert.match(filmPage, /photo\.thumb_file\.url/);
-  assert.match(filmPage, /preloadFilmImage\(mediumFile\.url\)/);
+  assert.match(filmPage, /preloadPhotoSource\(preview\.url, 0\)/);
   assert.match(filmPage, /useFilmVisibility\(frameRef\)/);
-  assert.match(filmPage, /visible && hdrEnabled/);
+  assert.match(filmPage, /filmPreviewFile\(photo, hdrEnabled\)/);
   assert.match(filmPage, /suspend=\{!visible\}/);
-  assert.match(filmPage, /setPreviewUrl\(mediumFile\.url\)/);
+  assert.match(filmPage, /setPreviewUrl\(preview\.url\)/);
+  assert(!filmPage.includes('preloadPhotoSource(photo.hdr_file'), 'board must never preload the full HDR source');
 });
 
 test('map and film controls share the same bottom-center placement and frosted surface', async () => {

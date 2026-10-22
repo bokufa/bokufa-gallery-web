@@ -6,6 +6,9 @@ import {
   loupeSampleCircle,
   loupeSceneView,
 } from "./filmLoupe";
+import { decodePhotoElement, PHOTO_LOAD_TIMEOUT_MS } from "./photoSources";
+
+export const MAX_LOUPE_DETAIL_IMAGES = 2;
 
 type Rect = { left: number; top: number; right: number; bottom: number };
 type Pending = {
@@ -15,6 +18,7 @@ type Pending = {
   decoded: boolean;
   started?: boolean;
   cancelFade?: () => void;
+  controller: AbortController;
 };
 type Entry = {
   edgeState?: string;
@@ -22,6 +26,7 @@ type Entry = {
   original: HTMLImageElement;
   frame: HTMLElement;
   image: HTMLImageElement;
+  previewImage: HTMLImageElement;
   bounds: Rect;
   imageBounds: Rect;
   preview: string;
@@ -30,6 +35,7 @@ type Entry = {
   readyUrl?: string;
   pending?: Pending;
   visible: boolean;
+  detailSelected: boolean;
   version: number;
 };
 
@@ -44,7 +50,13 @@ interface Options {
   onMagnification: (zoom: number) => void;
 }
 
-const imageSelector = '.film-image-window img[data-buffer-active="true"]';
+const activeImage = (frame: HTMLElement) =>
+  frame.querySelector<HTMLImageElement>(
+    '.film-table-detail-layer.is-ready img[data-buffer-active="true"]',
+  ) ||
+  frame.querySelector<HTMLImageElement>(
+    '.film-image-window .buffered-photo img[data-buffer-active="true"]',
+  );
 const emptyRect = (): Rect => ({ left: 0, top: 0, right: 0, bottom: 0 });
 const identity = (image: HTMLImageElement) =>
   [
@@ -52,6 +64,7 @@ const identity = (image: HTMLImageElement) =>
     image.dataset.filmHdrEnabled,
     image.dataset.filmHdrSrc,
     image.dataset.filmLargeSrc,
+    image.dataset.filmLoupeSrc,
   ].join(":");
 
 export function mountFilmLoupe({
@@ -99,11 +112,22 @@ export function mountFilmLoupe({
     // A preference change queues behind a running dissolve, not through it.
     if (!entry.pending?.started || discard) {
       entry.pending?.cancelFade?.();
+      entry.pending?.controller.abort();
+      if (entry.pending) entry.pending.image.src = "";
       entry.pending?.image.remove();
       entry.pending = undefined;
     }
     entry.requested = undefined;
     entry.readyUrl = undefined;
+  };
+  const releaseDetail = (entry: Entry) => {
+    invalidate(entry, true);
+    if (entry.image !== entry.previewImage) {
+      entry.image.src = "";
+      entry.image.remove();
+    }
+    entry.image = entry.previewImage;
+    entry.previewImage.dataset.bufferActive = "true";
   };
   const commit = (entry: Entry) => {
     const pending = entry.pending;
@@ -113,6 +137,7 @@ export function mountFilmLoupe({
       pending.started ||
       drag ||
       !entry.visible ||
+      !entry.detailSelected ||
       pending.version !== entry.version
     )
       return;
@@ -122,8 +147,13 @@ export function mountFilmLoupe({
     const finish = () => {
       if (!active || entry.pending !== pending) return;
       pending.cancelFade?.();
-      previous.remove();
+      if (previous !== entry.previewImage) {
+        previous.src = "";
+        previous.remove();
+      }
+      entry.previewImage.dataset.bufferActive = "false";
       entry.image = pending.image;
+      entry.image.dataset.bufferActive = "true";
       entry.pending = undefined;
       if (entry.readyUrl && !drag) {
         const url = entry.readyUrl;
@@ -158,6 +188,8 @@ export function mountFilmLoupe({
       return;
     }
     if (entry.image.src === url || entry.pending?.url === url) return;
+    entry.pending?.controller.abort();
+    if (entry.pending) entry.pending.image.src = "";
     entry.pending?.image.remove();
     const image = entry.image.cloneNode(false) as HTMLImageElement;
 
@@ -167,6 +199,7 @@ export function mountFilmLoupe({
     image.style.transition = "opacity 600ms ease-in-out";
     image.loading = "eager";
     image.src = url;
+    image.dataset.bufferActive = "false";
     image.dataset.hdrActive = String(
       entry.original.dataset.filmHdrEnabled === "true" &&
         url === entry.original.dataset.filmHdrSrc,
@@ -176,19 +209,26 @@ export function mountFilmLoupe({
       url,
       version: entry.version,
       decoded: false,
+      controller: new AbortController(),
     };
 
     entry.pending = pending;
     entry.image.parentElement?.append(image);
-    void image
-      .decode()
+    void decodePhotoElement(
+      image,
+      1,
+      pending.controller.signal,
+      PHOTO_LOAD_TIMEOUT_MS,
+    )
       .then(() => {
         if (
           !active ||
           entry.pending !== pending ||
           !entry.visible ||
+          !entry.detailSelected ||
           pending.version !== entry.version
         ) {
+          image.src = "";
           image.remove();
 
           return;
@@ -197,6 +237,7 @@ export function mountFilmLoupe({
         commit(entry);
       })
       .catch(() => {
+        image.src = "";
         image.remove();
         if (entry.pending === pending) {
           entry.pending = undefined;
@@ -229,6 +270,7 @@ export function mountFilmLoupe({
     for (const entry of entries) {
       if (
         !entry.visible ||
+        !entry.detailSelected ||
         !circleIntersectsRect(
           circle.x,
           circle.y,
@@ -248,7 +290,13 @@ export function mountFilmLoupe({
       entry.requested = entry.identity;
       void loadDetail(entry.original)
         .then((url) => {
-          if (!active || !entry.visible || version !== entry.version) return;
+          if (
+            !active ||
+            !entry.visible ||
+            !entry.detailSelected ||
+            version !== entry.version
+          )
+            return;
           if (!url) {
             entry.requested = undefined;
 
@@ -311,7 +359,7 @@ export function mountFilmLoupe({
       entries.forEach((entry) => invalidate(entry, true));
       mirror.replaceChildren();
       entries = sourceFrames.flatMap((element) => {
-        const original = element.querySelector<HTMLImageElement>(imageSelector);
+        const original = activeImage(element);
 
         if (!original) return [];
         const copy = document.createElement("span");
@@ -330,14 +378,14 @@ export function mountFilmLoupe({
             '.film-image-window img:not([data-buffer-active="true"])',
           )
           .forEach((image) => image.remove());
-        const image = copy.querySelector<HTMLImageElement>(imageSelector)!;
+        const image = activeImage(copy)!;
         const preview =
-          original.dataset.filmThumbSrc || original.currentSrc || original.src;
+          original.currentSrc || original.src || original.dataset.filmThumbSrc!;
 
         image.src = preview;
         image.style.opacity = "1";
         image.style.zIndex = "1";
-        image.dataset.hdrActive = "false";
+        image.dataset.hdrActive = original.dataset.hdrActive ?? "false";
         mirror.append(copy);
 
         return [
@@ -346,11 +394,13 @@ export function mountFilmLoupe({
             original,
             frame: copy,
             image,
+            previewImage: image,
             bounds: emptyRect(),
             imageBounds: emptyRect(),
             preview,
             identity: identity(original),
             visible: false,
+            detailSelected: false,
             version: 0,
           },
         ];
@@ -358,8 +408,7 @@ export function mountFilmLoupe({
       measure();
     } else {
       for (const entry of entries) {
-        const original =
-          entry.source.querySelector<HTMLImageElement>(imageSelector);
+        const original = activeImage(entry.source);
 
         if (!original) continue;
         const nextIdentity = identity(original);
@@ -367,6 +416,14 @@ export function mountFilmLoupe({
         if (nextIdentity !== entry.identity) invalidate(entry);
         entry.original = original;
         entry.identity = nextIdentity;
+        const preview = original.currentSrc || original.src;
+
+        if (preview && preview !== entry.preview) {
+          entry.preview = preview;
+          entry.previewImage.src = preview;
+          entry.previewImage.dataset.hdrActive =
+            original.dataset.hdrActive ?? "false";
+        }
         // React hooks do not run on cloned DOM. Copy the native HDR glyph state
         // only when labels change; never measure, decode or rebuild them on drag.
         const labels = [
@@ -450,11 +507,44 @@ export function mountFilmLoupe({
       entry.visible = visible;
       entry.frame.style.display = visible ? "block" : "none";
       if (!visible) {
-        // Do not retain an 8K HDR texture for every frame the loupe has visited.
-        invalidate(entry, true);
-        if (entry.image.src !== entry.preview) entry.image.src = entry.preview;
-        entry.image.dataset.hdrActive = "false";
+        releaseDetail(entry);
       }
+    }
+    // At very low canvas zoom the glass can contain many frames. Upgrade only
+    // the two closest to its center; every other frame keeps its fixed preview.
+    const selected = new Set(
+      entries
+        .filter(
+          (entry) =>
+            entry.visible &&
+            circleIntersectsRect(
+              circle.x,
+              circle.y,
+              circle.radius,
+              entry.imageBounds,
+            ),
+        )
+        .sort((a, b) => {
+          const distance = (entry: Entry) => {
+            const rect = entry.imageBounds;
+            const dx = Math.max(rect.left - circle.x, 0, circle.x - rect.right);
+            const dy = Math.max(rect.top - circle.y, 0, circle.y - rect.bottom);
+
+            return dx * dx + dy * dy;
+          };
+
+          return distance(a) - distance(b);
+        })
+        .slice(0, MAX_LOUPE_DETAIL_IMAGES),
+    );
+
+    for (const entry of entries) {
+      const next = selected.has(entry);
+
+      if (entry.detailSelected === next) continue;
+      selectionChanged = true;
+      if (!next) releaseDetail(entry);
+      entry.detailSelected = next;
     }
     if (selectionChanged && !drag) scheduleQuality();
   };

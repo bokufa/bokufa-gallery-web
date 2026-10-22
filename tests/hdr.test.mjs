@@ -407,6 +407,62 @@ test('a DOM decode failure cannot freeze later image jobs', async () => {
   assert.equal(completed, true);
 });
 
+test('aborting an active hung native decode releases the queue before its promise settles', async () => {
+  const controller = new AbortController();
+  let settleOld;
+  const old = decodePhotoElement({ decode() { return new Promise(resolve => { settleOld = resolve; }); } }, 2, controller.signal);
+  let nextStarted = false;
+  const next = decodePhotoElement({ decode() { nextStarted = true; return Promise.resolve(); } });
+  controller.abort();
+  await assert.rejects(old, { name: 'AbortError' });
+  await next;
+  assert(nextStarted);
+  settleOld(); await tick();
+});
+
+test('decode timeout advances the queue, and a late old callback cannot unlock a newer job', async t => {
+  const originalSet = globalThis.setTimeout, originalClear = globalThis.clearTimeout;
+  const timers = new Map(); let id = 0;
+  globalThis.setTimeout = (callback, delay) => { timers.set(++id, {callback, delay}); return id; };
+  globalThis.clearTimeout = id => timers.delete(id);
+  t.after(() => { globalThis.setTimeout = originalSet; globalThis.clearTimeout = originalClear; });
+  let settleOld, settleNext;
+  const old = decodePhotoElement({ decode() { return new Promise(resolve => { settleOld = resolve; }); } });
+  const next = decodePhotoElement({ decode() { return new Promise(resolve => { settleNext = resolve; }); } });
+  let thirdStarted = false;
+  const third = decodePhotoElement({ decode() { thirdStarted = true; return Promise.resolve(); } });
+  const timeout = [...timers.values()][0];
+  assert.equal(timeout.delay, 12000);
+  timeout.callback();
+  await assert.rejects(old, { name: 'TimeoutError' });
+  assert.equal(typeof settleNext, 'function');
+  settleOld(); await tick();
+  assert.equal(thirdStarted, false, 'the old completion must not clear the new active job');
+  settleNext(); await next; await third;
+  assert(thirdStarted);
+  assert.equal(timers.size, 0);
+});
+
+test('a timed-out detached preload is aborted and evicted so a later visit can retry', async t => {
+  const requests = mockImages(t);
+  const originalSet = globalThis.setTimeout, originalClear = globalThis.clearTimeout;
+  const timers = new Map(); let id = 0;
+  globalThis.setTimeout = (callback, delay) => { timers.set(++id, {callback, delay}); return id; };
+  globalThis.clearTimeout = id => timers.delete(id);
+  t.after(() => { globalThis.setTimeout = originalSet; globalThis.clearTimeout = originalClear; });
+  const old = preloadPhotoSource('deadline-preview');
+  const timeout = [...timers.values()][0];
+  assert.equal(timeout.delay, 30000);
+  timeout.callback();
+  await assert.rejects(old, { name: 'TimeoutError' });
+  assert.equal(requests[0].image.src, '', 'stop retaining the old detached image source');
+  const retry = preloadPhotoSource('deadline-preview');
+  assert.notEqual(old, retry);
+  requests[1].resolve(); await retry;
+  requests[0].resolve(); await tick();
+  assert.equal(timers.size, 0);
+});
+
 const { default: useFilmVisibility } = await import(await compile('../src/hooks/useFilmVisibility.ts', { react: reactUrl }));
 test('film visibility keeps observing pan/zoom and cleans up on route exit', t => {
   let callback;

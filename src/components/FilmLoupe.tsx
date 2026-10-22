@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from "react";
 import { TbMinus, TbPlus, TbX } from "react-icons/tb";
 
 import { fetchPhoto } from "../services/photos";
-import { preloadPhotoSource } from "../utils/photoSources";
 import { mountFilmLoupe } from "../utils/filmLoupeController";
 import { useLanguage } from "../contexts/LanguageContext";
+
 import HdrLightPanel from "./HdrLightPanel";
 
 const detailImages = new Map<string, Promise<string | undefined>>();
@@ -16,7 +16,9 @@ function loadDetailImage(image: HTMLImageElement) {
   const id = image.dataset.filmPhotoId;
   const hdrEnabled = image.dataset.filmHdrEnabled === "true";
   const suppliedUrl =
-    (hdrEnabled && image.dataset.filmHdrSrc) || image.dataset.filmLargeSrc;
+    image.dataset.filmLoupeSrc ||
+    (hdrEnabled && image.dataset.filmHdrSrc) ||
+    image.dataset.filmLargeSrc;
   const key = `${hdrEnabled ? "hdr" : "sdr"}:${suppliedUrl || `photo:${id}`}`;
   const existing = detailImages.get(key);
 
@@ -31,8 +33,8 @@ function loadDetailImage(image: HTMLImageElement) {
       image.currentSrc ||
       image.src;
 
-    await preloadPhotoSource(url, 1);
-
+    // The controller owns the native image, decode budget and cancellation.
+    // Do not decode another detached high-resolution copy here.
     return url;
   })().catch(() => {
     detailImages.delete(key);

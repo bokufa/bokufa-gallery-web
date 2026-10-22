@@ -17,6 +17,11 @@ import {
 } from "../utils/filmCanvas";
 import { useHdr } from "../contexts/HdrContext";
 import { useLanguage } from "../contexts/LanguageContext";
+import { FilmQualityProvider } from "../contexts/FilmQualityContext";
+import {
+  FILM_DETAIL_SCALE_THRESHOLD,
+  planFilmDetailSelection,
+} from "../utils/filmDetailSelection";
 
 import FilmLoupe from "./FilmLoupe";
 import HdrToggle from "./HdrToggle";
@@ -37,6 +42,9 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
   const [scale, setScale] = useState(100);
   const [minimumPercent, setMinimumPercent] = useState(MIN_FILM_SCALE * 100);
   const [isLoupeOpen, setIsLoupeOpen] = useState(false);
+  const [detailIds, setDetailIds] = useState<ReadonlySet<number>>(new Set());
+  const detailIdsRef = useRef<ReadonlySet<number>>(new Set());
+  const qualityChangedRef = useRef<() => void>(() => undefined);
   const sceneChangedRef = useRef<() => void>(() => undefined);
 
   useEffect(() => {
@@ -46,7 +54,77 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
     let gestureStart: { x: number; y: number } | undefined;
     let suppressClick = false;
     let frame = 0;
+    let qualityFrame = 0;
+    let releaseFrame = 0;
     let viewportWidth = viewport.clientWidth;
+
+    const commitDetailIds = (ids: ReadonlySet<number>) => {
+      if (
+        ids.size === detailIdsRef.current.size &&
+        [...ids].every((id) => detailIdsRef.current.has(id))
+      )
+        return false;
+      detailIdsRef.current = ids;
+      setDetailIds(ids);
+
+      return true;
+    };
+    const updateDetailQuality = () => {
+      qualityFrame = 0;
+      const view = viewRef.current;
+
+      // Below the threshold the current cache is deliberately left untouched.
+      if (view.scale < FILM_DETAIL_SCALE_THRESHOLD) return;
+      const centerX = viewport.clientWidth / 2;
+      const centerY = viewport.clientHeight / 2;
+      const candidates = [
+        ...content.querySelectorAll<HTMLElement>(".film-frame"),
+      ].flatMap((element) => {
+        const id = Number(element.dataset.filmPhotoId);
+
+        if (!Number.isSafeInteger(id)) return [];
+        const left = view.x + element.offsetLeft * view.scale;
+        const top = view.y + element.offsetTop * view.scale;
+        const width = element.offsetWidth * view.scale;
+        const height = element.offsetHeight * view.scale;
+
+        if (
+          left + width <= 0 ||
+          top + height <= 0 ||
+          left >= viewport.clientWidth ||
+          top >= viewport.clientHeight
+        )
+          return [];
+        const dx = left + width / 2 - centerX;
+        const dy = top + height / 2 - centerY;
+
+        return [{ id, distance: dx * dx + dy * dy }];
+      });
+      const plan = planFilmDetailSelection(
+        detailIdsRef.current,
+        candidates,
+        view.scale,
+      );
+      const changed = commitDetailIds(plan.ids);
+
+      cancelAnimationFrame(releaseFrame);
+      if (plan.waitForRelease) {
+        // One frame removes the old native image; a second frame may allocate
+        // its replacement without temporarily exceeding the texture budget.
+        releaseFrame = requestAnimationFrame(() => {
+          releaseFrame = requestAnimationFrame(() => {
+            qualityFrame = requestAnimationFrame(updateDetailQuality);
+          });
+        });
+      } else if (changed)
+        qualityFrame = requestAnimationFrame(updateDetailQuality);
+    };
+    const queueDetailQuality = () => {
+      if (!qualityFrame)
+        qualityFrame = requestAnimationFrame(updateDetailQuality);
+    };
+
+    qualityChangedRef.current = queueDetailQuality;
 
     const defaultView = () => {
       const frames = [...content.querySelectorAll<HTMLElement>(".film-frame")];
@@ -95,6 +173,7 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
 
         content.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${next.scale})`;
         sceneChangedRef.current();
+        queueDetailQuality();
         setScale(Math.round(next.scale * 100));
         setMinimumPercent(
           Math.round(
@@ -296,6 +375,8 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
 
     return () => {
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(qualityFrame);
+      cancelAnimationFrame(releaseFrame);
       resize.disconnect();
       viewport.removeEventListener("pointerdown", pointerDown);
       viewport.removeEventListener("pointermove", pointerMove);
@@ -305,89 +386,100 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
       viewport.removeEventListener("click", click, true);
       viewport.removeEventListener("wheel", wheel);
       viewport.removeEventListener("keydown", keyDown);
+      qualityChangedRef.current = () => undefined;
     };
   }, []);
 
+  useEffect(() => {
+    // Switching SDR/HDR must not retain the previous mode's high-resolution
+    // textures. Low previews remain visible while the current center refills.
+    detailIdsRef.current = new Set();
+    setDetailIds(new Set());
+    qualityChangedRef.current();
+  }, [hdrEnabled]);
+
   return (
-    <div
-      className="film-canvas"
-      data-hdr-enabled={hdrEnabled}
-      style={
-        {
-          "--film-world-width": `${filmSceneWidth()}px`,
-          "--film-world-height": `${FILM_WORLD_HEIGHT}px`,
-          "--film-board-margin": `${FILM_BOARD_MARGIN}px`,
-          "--film-mm": `${FILM_PIXELS_PER_MM}px`,
-        } as CSSProperties
-      }
-    >
-      <HdrLightPanel />
+    <FilmQualityProvider detailIds={detailIds}>
       <div
-        ref={viewportRef}
-        aria-label={t("film.canvas")}
-        className="film-canvas-viewport"
-        role="region"
-        tabIndex={0}
+        className="film-canvas"
+        data-hdr-enabled={hdrEnabled}
+        style={
+          {
+            "--film-world-width": `${filmSceneWidth()}px`,
+            "--film-world-height": `${FILM_WORLD_HEIGHT}px`,
+            "--film-board-margin": `${FILM_BOARD_MARGIN}px`,
+            "--film-mm": `${FILM_PIXELS_PER_MM}px`,
+          } as CSSProperties
+        }
       >
-        <div ref={contentRef} className="film-canvas-content">
-          {children}
-        </div>
-      </div>
-      <FloatingControls>
+        <HdrLightPanel />
         <div
-          aria-label={t("film.zoom")}
-          className={`film-canvas-controls pointer-events-auto ${floatingControlSurface}`}
-          role="group"
-          title={t("film.gestures")}
+          ref={viewportRef}
+          aria-label={t("film.canvas")}
+          className="film-canvas-viewport"
+          role="region"
+          tabIndex={0}
         >
-          <button
-            aria-label={t("zoom.out")}
-            disabled={scale <= minimumPercent}
-            title={t("zoom.out")}
-            type="button"
-            onClick={() => controlsRef.current("out")}
-          >
-            <TbMinus size={18} />
-          </button>
-          <span aria-label={t("zoom.scale", { scale })}>{scale}%</span>
-          <button
-            aria-label={t("zoom.in")}
-            disabled={scale >= 300}
-            title={t("zoom.in")}
-            type="button"
-            onClick={() => controlsRef.current("in")}
-          >
-            <TbPlus size={18} />
-          </button>
-          <button
-            aria-label={t("film.reset")}
-            title={t("film.reset")}
-            type="button"
-            onClick={() => controlsRef.current("reset")}
-          >
-            <TbZoomReset size={18} />
-          </button>
-          <button
-            aria-label={t("loupe")}
-            aria-pressed={isLoupeOpen}
-            title={t("loupe")}
-            type="button"
-            onClick={() => setIsLoupeOpen((open) => !open)}
-          >
-            <TbZoomScan size={18} />
-          </button>
-          <HdrToggle />
+          <div ref={contentRef} className="film-canvas-content">
+            {children}
+          </div>
         </div>
-      </FloatingControls>
-      {isLoupeOpen ? (
-        <FilmLoupe
-          contentRef={contentRef}
-          sceneChangedRef={sceneChangedRef}
-          viewRef={viewRef}
-          viewportRef={viewportRef}
-          onClose={() => setIsLoupeOpen(false)}
-        />
-      ) : null}
-    </div>
+        <FloatingControls>
+          <div
+            aria-label={t("film.zoom")}
+            className={`film-canvas-controls pointer-events-auto ${floatingControlSurface}`}
+            role="group"
+            title={t("film.gestures")}
+          >
+            <button
+              aria-label={t("zoom.out")}
+              disabled={scale <= minimumPercent}
+              title={t("zoom.out")}
+              type="button"
+              onClick={() => controlsRef.current("out")}
+            >
+              <TbMinus size={18} />
+            </button>
+            <span aria-label={t("zoom.scale", { scale })}>{scale}%</span>
+            <button
+              aria-label={t("zoom.in")}
+              disabled={scale >= 300}
+              title={t("zoom.in")}
+              type="button"
+              onClick={() => controlsRef.current("in")}
+            >
+              <TbPlus size={18} />
+            </button>
+            <button
+              aria-label={t("film.reset")}
+              title={t("film.reset")}
+              type="button"
+              onClick={() => controlsRef.current("reset")}
+            >
+              <TbZoomReset size={18} />
+            </button>
+            <button
+              aria-label={t("loupe")}
+              aria-pressed={isLoupeOpen}
+              title={t("loupe")}
+              type="button"
+              onClick={() => setIsLoupeOpen((open) => !open)}
+            >
+              <TbZoomScan size={18} />
+            </button>
+            <HdrToggle />
+          </div>
+        </FloatingControls>
+        {isLoupeOpen ? (
+          <FilmLoupe
+            contentRef={contentRef}
+            sceneChangedRef={sceneChangedRef}
+            viewRef={viewRef}
+            viewportRef={viewportRef}
+            onClose={() => setIsLoupeOpen(false)}
+          />
+        ) : null}
+      </div>
+    </FilmQualityProvider>
   );
 }

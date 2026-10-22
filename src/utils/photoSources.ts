@@ -14,51 +14,65 @@ export function preferredPhotoFile(photo: Photo, hdrEnabled: boolean) {
 
 const loads = new Map<string, Promise<void>>();
 const pending: Array<{ url: string; priority: number; start: () => void }> = [];
-let decoding = false;
+let active: (typeof pending)[number] | undefined;
+export const PHOTO_DECODE_TIMEOUT_MS = 12_000;
+export const PHOTO_LOAD_TIMEOUT_MS = 30_000;
 
 function pump() {
-  if (decoding || !pending.length) return;
+  if (active || !pending.length) return;
   pending.sort((a, b) => b.priority - a.priority);
-  decoding = true;
-  pending.shift()!.start();
+  active = pending.shift()!;
+  active.start();
 }
 
-// Actual DOM images share the preload budget too, including small HDR labels.
-// Otherwise a preload finishing can trigger a second, unbounded decode burst.
-export function decodePhotoElement(
-  image: HTMLImageElement,
-  priority = 2,
-  signal?: AbortSignal,
+function queueDecode(
+  factory: () => HTMLImageElement,
+  priority: number,
+  signal: AbortSignal | undefined,
+  timeoutMs: number,
+  url = "",
 ) {
   const aborted = () =>
     new DOMException("Image no longer visible", "AbortError");
 
   if (signal?.aborted) return Promise.reject(aborted());
   const request = new Promise<void>((resolve, reject) => {
+    let finished = false;
+    let image: HTMLImageElement | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const cleanup = () => signal?.removeEventListener("abort", cancel);
-    const cancel = () => {
+    const finish = (error?: unknown) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
       const index = pending.indexOf(task);
 
       if (index >= 0) pending.splice(index, 1);
+      // Only detached preloads own their src; never blank a visible DOM fallback.
+      if (error && url && image) image.src = "";
       cleanup();
-      reject(aborted());
+      if (error) reject(error);
+      else resolve();
+      if (active === task) active = undefined;
+      pump();
     };
+    const cancel = () => finish(aborted());
     const task = {
-      url: "",
+      url,
       priority,
       start: () => {
-        void Promise.resolve()
-          .then(() => {
-            if (signal?.aborted) throw aborted();
-
-            return image.decode();
-          })
-          .then(resolve, reject)
-          .finally(() => {
-            cleanup();
-            decoding = false;
-            pump();
-          });
+        timer = setTimeout(
+          () =>
+            finish(new DOMException("Image decode timed out", "TimeoutError")),
+          timeoutMs,
+        );
+        try {
+          if (signal?.aborted) throw aborted();
+          image = factory();
+          void image.decode().then(() => finish(), finish);
+        } catch (error) {
+          finish(error);
+        }
       },
     };
 
@@ -69,6 +83,17 @@ export function decodePhotoElement(
   pump();
 
   return request;
+}
+
+// A hung/aborted native promise must not hold the shared queue forever. Late
+// completion belongs to its old job and cannot unlock a newer active decode.
+export function decodePhotoElement(
+  image: HTMLImageElement,
+  priority = 2,
+  signal?: AbortSignal,
+  timeoutMs = PHOTO_DECODE_TIMEOUT_MS,
+) {
+  return queueDecode(() => image, priority, signal, timeoutMs);
 }
 
 // Decode original image bytes natively; canvas/re-encoding would discard gain maps.
@@ -82,31 +107,24 @@ export function preloadPhotoSource(url: string, priority = 2) {
 
     return existing;
   }
-  const request = new Promise<void>((resolve, reject) => {
-    pending.push({
-      url,
-      priority,
-      start: () => {
-        const image = new Image();
+  const request = queueDecode(
+    () => {
+      const image = new Image();
 
-        image.decoding = "async";
-        image.src = url;
-        void image
-          .decode()
-          .then(resolve, (error) => {
-            loads.delete(url);
-            reject(error);
-          })
-          .finally(() => {
-            decoding = false;
-            pump();
-          });
-      },
-    });
+      image.decoding = "async";
+      image.src = url;
+
+      return image;
+    },
+    priority,
+    undefined,
+    PHOTO_LOAD_TIMEOUT_MS,
+    url,
+  ).catch((error) => {
+    if (loads.get(url) === request) loads.delete(url);
+    throw error;
   });
 
   loads.set(url, request);
-  pump();
-
   return request;
 }

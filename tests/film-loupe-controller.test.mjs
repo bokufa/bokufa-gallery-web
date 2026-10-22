@@ -6,7 +6,8 @@ import ts from 'typescript';
 const url = text => `data:text/javascript;base64,${Buffer.from(text).toString('base64')}`;
 const compile = text => ts.transpileModule(text, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
 const math = url(compile(await readFile(new URL('../src/utils/filmLoupe.ts', import.meta.url), 'utf8')));
-const controllerSource = compile(await readFile(new URL('../src/utils/filmLoupeController.ts', import.meta.url), 'utf8')).replace('"./filmLoupe"', JSON.stringify(math));
+const sources = url(compile(await readFile(new URL('../src/utils/photoSources.ts', import.meta.url), 'utf8')));
+const controllerSource = compile(await readFile(new URL('../src/utils/filmLoupeController.ts', import.meta.url), 'utf8')).replace('"./filmLoupe"', JSON.stringify(math)).replace('"./photoSources"', JSON.stringify(sources));
 const { mountFilmLoupe } = await import(url(controllerSource));
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
@@ -64,6 +65,7 @@ function fixture(t, count = 100, load) {
       if (selector === '.film-frame') return this.attrs.get('class').split(' ').includes('film-frame');
       if (selector === '.film-image-window') return this.attrs.get('class').split(' ').includes('film-image-window');
       if (selector.includes('img')) {
+        if (!selector.includes('data-buffer-active')) return this.tagName === 'img';
         const isActive = this.dataset.bufferActive === 'true';
         return this.tagName === 'img' && (selector.includes(':not') ? !isActive : isActive);
       }
@@ -153,9 +155,9 @@ test('release upgrades only the final sample and hidden frames release their HDR
   await tick(); f.paint(); f.paint();
   assert.deepEqual(f.calls, ['2']);
   const second = f.mirror.childNodes[1];
-  const layers = second.querySelectorAll('.film-image-window img[data-buffer-active="true"]');
+  const layers = second.querySelectorAll('.film-image-window img');
   assert.equal(layers.length, 2, 'old image remains opaque throughout the dissolve');
-  assert.equal(layers[0].src, 'thumb-2');
+  assert.equal(layers[0].src, 'medium-2');
   assert.equal(layers[0].style.opacity, '1');
   assert.equal(layers[1].style.opacity, '1');
   assert.equal(layers[1].style.transition, 'opacity 600ms ease-in-out');
@@ -169,7 +171,8 @@ test('release upgrades only the final sample and hidden frames release their HDR
   assert.equal(second.querySelector('.film-image-window img[data-buffer-active="true"]').src, 'hdr-2');
   f.emit('pointerdown', 750); f.emit('pointermove', 500); f.paint();
   assert.equal(second.style.display, 'none');
-  assert.equal(second.querySelector('.film-image-window img[data-buffer-active="true"]').src, 'thumb-2');
+  assert.equal(second.querySelector('.film-image-window img[data-buffer-active="true"]').src, 'medium-2');
+  assert.equal(second.querySelectorAll('.film-image-window img').length, 1, 'high-resolution DOM is released while the preview stays ready');
 });
 
 test('a late detail result cannot replace a different sample, and closing cancels queued work', async t => {
@@ -180,7 +183,7 @@ test('a late detail result cannot replace a different sample, and closing cancel
   resolvers.get('1')('large-1'); resolvers.get('2')('large-2');
   await tick(); f.paint(); f.paint();
   f.idle();
-  assert.equal(f.mirror.childNodes[0].querySelector('.film-image-window img[data-buffer-active="true"]').src, 'thumb-1');
+  assert.equal(f.mirror.childNodes[0].querySelector('.film-image-window img[data-buffer-active="true"]').src, 'medium-1');
   assert.equal(f.mirror.childNodes[1].querySelector('.film-image-window img[data-buffer-active="true"]').src, 'large-2');
   f.controller.sceneChanged();
   f.controller.destroy();
@@ -188,6 +191,23 @@ test('a late detail result cannot replace a different sample, and closing cancel
   assert.equal(f.timers.size, 0);
   assert.equal(f.glass.childNodes.length, 0);
   assert.equal(f.glass.listeners.size, 0);
+});
+
+test('at 14% the loupe upgrades at most two sampled films and leaves all table previews untouched', async t => {
+  const f = fixture(t, 20);
+  f.source.childNodes.forEach((frame, i) => {
+    frame.rect = { left: 100 + i % 4 * 320, top: 50 + Math.floor(i / 4) * 320, width: 300, height: 300 };
+    frame.querySelector('.film-image-window').rect = { left: frame.rect.left + 15, top: frame.rect.top + 15, width: 270, height: 270 };
+  });
+  f.view.scale = 0.14; f.view.x = 400; f.view.y = 250;
+  f.resize();
+  f.controller.adjustZoom(-1); f.controller.adjustZoom(-1); f.controller.adjustZoom(-1);
+  f.paint(); f.idle(); await tick(); f.paint(); f.paint(); f.idle();
+  assert(f.mirror.childNodes.filter(frame => frame.style.display !== 'none').length > 2);
+  assert.equal(f.calls.length, 2, 'the sample may contain many films, but only two get detail requests');
+  const high = f.mirror.childNodes.flatMap(frame => frame.querySelectorAll('.film-image-window img')).filter(image => image.src.startsWith('large-'));
+  assert.equal(high.length, 2);
+  f.source.childNodes.forEach((frame, i) => assert.equal(frame.querySelector('.film-image-window img[data-buffer-active="true"]').src, `medium-${i + 1}`));
 });
 
 test('loupe mirrors HDR lettering readiness and enable/disable changes without remeasuring the scene', t => {
