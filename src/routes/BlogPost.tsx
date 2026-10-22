@@ -15,6 +15,8 @@ import {
   isCanceledBlogRequest,
 } from "../services/blog";
 import { formatShortDate } from "../utils/date";
+import { nativeLocationText } from "../utils/placeNames";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const markdownComponents: Components = {
   h1: ({ children }) => (
@@ -106,6 +108,7 @@ const markdownComponents: Components = {
 };
 
 export default function BlogPost() {
+  const { t } = useLanguage();
   const { slug } = useParams();
   const navigate = useNavigate();
   const [post, setPost] = useState<BlogPostData | undefined>(() => (
@@ -171,10 +174,10 @@ export default function BlogPost() {
   if (notFound) {
     return (
       <div className="atogaki-content flex min-h-[60vh] flex-col items-center justify-center px-5 text-center">
-        <p className="text-tiny tracking-[0.2em] text-default-400">404 / NOT FOUND</p>
-        <h1 className="mt-3 text-xl font-semibold">没有找到这篇文章</h1>
+        <p className="text-tiny tracking-[0.2em] text-default-400">{t("notFound")}</p>
+        <h1 className="mt-3 text-xl font-semibold">{t("blog.notFound")}</h1>
         <Button className="mt-6" variant="flat" onPress={() => navigate("/blog")}>
-          返回後書き
+          {t("blog.back")}
         </Button>
       </div>
     );
@@ -183,10 +186,10 @@ export default function BlogPost() {
   if (error || !post) {
     return (
       <div className="atogaki-content flex min-h-[60vh] flex-col items-center justify-center px-5 text-center">
-        <p className="text-sm text-default-500">文章暂时无法读取。</p>
+        <p className="text-sm text-default-500">{t("blog.postError")}</p>
         <div className="mt-5 flex gap-2">
-          <Button variant="light" onPress={() => navigate("/blog")}>返回後書き</Button>
-          <Button variant="flat" onPress={() => setRequestVersion((value) => value + 1)}>重试</Button>
+          <Button variant="light" onPress={() => navigate("/blog")}>{t("blog.back")}</Button>
+          <Button variant="flat" onPress={() => setRequestVersion((value) => value + 1)}>{t("retry")}</Button>
         </div>
       </div>
     );
@@ -202,7 +205,7 @@ export default function BlogPost() {
           className="px-0 text-default-500"
           onPress={() => navigate("/blog")}
         >
-          返回後書き
+          {t("blog.back")}
         </Button>
       </div>
 
@@ -214,7 +217,7 @@ export default function BlogPost() {
           </span>
           <span className="flex items-center gap-1.5">
             <IoLocationOutline size={17} />
-            {post.location}
+            {nativeLocationText(post.location)}
           </span>
         </div>
         <div className="mt-4 flex items-baseline justify-between gap-6">
@@ -250,14 +253,14 @@ export default function BlogPost() {
 
         <div className="mt-14 border-t border-default-200 pt-7">
           <div className="text-center">
-            <p className="text-tiny tracking-[0.2em] text-default-400">END OF STORY</p>
+            <p className="text-tiny tracking-[0.2em] text-default-400">{t("blog.end")}</p>
             <Button
               className="mt-4"
               variant="light"
               startContent={<HiArrowLongLeft size={20} />}
               onPress={() => navigate("/blog")}
             >
-              返回後書き
+              {t("blog.back")}
             </Button>
           </div>
         </div>

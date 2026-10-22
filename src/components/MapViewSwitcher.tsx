@@ -2,6 +2,7 @@ import { Tab, Tabs } from "@heroui/react";
 import type { Key } from "react";
 import { TbMap, TbPhotoPin } from "react-icons/tb";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "../contexts/LanguageContext";
 
 export type MapView = "regions" | "photos";
 
@@ -12,6 +13,7 @@ interface MapViewSwitcherProps {
 
 export default function MapViewSwitcher({ view, isHidden = false }: MapViewSwitcherProps) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const switchView = (key: Key) => {
     if (key === view) return;
@@ -27,7 +29,7 @@ export default function MapViewSwitcher({ view, isHidden = false }: MapViewSwitc
       isHidden ? "invisible opacity-0" : "visible opacity-100"
     }`}>
       <Tabs
-        aria-label="地图显示方式"
+        aria-label={t("map.view")}
         selectedKey={view}
         onSelectionChange={switchView}
         size="lg"
@@ -42,7 +44,7 @@ export default function MapViewSwitcher({ view, isHidden = false }: MapViewSwitc
           title={(
             <span className="flex items-center gap-1.5">
               <TbMap aria-hidden="true" size={17} />
-              <span>地区</span>
+              <span>{t("map.regions")}</span>
             </span>
           )}
         />
@@ -51,7 +53,7 @@ export default function MapViewSwitcher({ view, isHidden = false }: MapViewSwitc
           title={(
             <span className="flex items-center gap-1.5">
               <TbPhotoPin aria-hidden="true" size={17} />
-              <span>照片</span>
+              <span>{t("map.photos")}</span>
             </span>
           )}
         />

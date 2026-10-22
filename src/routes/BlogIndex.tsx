@@ -10,8 +10,11 @@ import {
   isCanceledBlogRequest,
 } from "../services/blog";
 import { formatShortDate } from "../utils/date";
+import { nativeLocationText } from "../utils/placeNames";
+import { useLanguage } from "../contexts/LanguageContext";
 
 export default function BlogIndex() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [posts, setPosts] = useState<BlogPostSummary[]>(() => (
     getCachedBlogPosts()?.items ?? []
@@ -58,14 +61,14 @@ export default function BlogIndex() {
         </div>
       ) : error ? (
         <div className="border-y border-default-200 px-2 py-14 text-center">
-          <p className="text-sm text-default-500">暂时无法读取後書き。</p>
+          <p className="text-sm text-default-500">{t("blog.error")}</p>
           <Button className="mt-4" size="sm" variant="light" onPress={() => setRequestVersion((value) => value + 1)}>
-            重试
+            {t("retry")}
           </Button>
         </div>
       ) : posts.length === 0 ? (
         <div className="border-y border-default-200 px-2 py-14 text-center text-sm text-default-400">
-          还没有公开的文章。
+          {t("blog.empty")}
         </div>
       ) : (
         <section className="border-b border-default-200">
@@ -82,7 +85,7 @@ export default function BlogIndex() {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <IoLocationOutline size={16} />
-                  {post.location}
+                  {nativeLocationText(post.location)}
                 </span>
             </div>
             <div className="mt-3 flex items-baseline justify-between gap-5">

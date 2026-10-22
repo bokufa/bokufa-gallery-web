@@ -15,6 +15,8 @@ import Feature, { FeatureLike } from "ol/Feature";
 import { Select, SelectItem, Spinner } from "@heroui/react";
 import { TbPhoto } from "react-icons/tb";
 import { MAP_COUNTRIES, mapCountryForCode, photoBelongsToCountry } from "../data/mapCountries";
+import { localPlaceLocale, nativePlaceName } from "../utils/placeNames";
+import { useLanguage } from "../contexts/LanguageContext";
 import './map_openlayers.css';
 import 'ol/ol.css';
 
@@ -32,16 +34,11 @@ interface RegionsMapProps {
 
 function geoName(
   entity: { name: string; i18n?: Record<string, string> },
-  locale: string,
-  _context: { countryCode: string; level: string },
+  _locale: string,
+  context: { countryCode: string; level: "country" | "prefecture" },
 ) {
-  return entity.i18n?.[locale] ?? entity.name;
+  return nativePlaceName(entity, context.countryCode, context.level);
 }
-
-const t = (key: string) => ({
-  "map.countries": "国家 / 地区",
-  "map.select_country": "请选择一个国家或地区",
-} as Record<string, string>)[key] ?? key;
 
 // ---------------------------------------------------------------------------
 // timings and tuning
@@ -317,6 +314,7 @@ interface TicketInfo {
 // handed to the nested photo-list route as outlet context, so it knows it is
 // riding on top of the living map (and keeps its navigation under /map)
 export default function RegionsMap({ photos, overlayActive, onRegionSelect, onBack }: RegionsMapProps) {
+  const { t } = useLanguage();
   const darkmode = { value: false }
   const pageRef = useRef<HTMLDivElement>(null)
   const mapElement = useRef<HTMLDivElement>(null)
@@ -377,9 +375,8 @@ export default function RegionsMap({ photos, overlayActive, onRegionSelect, onBa
     setTicket(null)
   }, [darkmode.value, resolveTheme])
 
-  // a language switch only swaps the label font stack (glyph forms) and
-  // repaints the canvas instead of rebuilding the map
-  const mapLang = "zh-CN"
+  // Place labels follow their country, while interface controls stay Chinese.
+  const mapLang = localPlaceLocale(country.code)
   const countryName = (value: Country) =>
     geoName(value, mapLang, { countryCode: value.code, level: "country" })
   const langRef = useRef(mapLang)
@@ -532,7 +529,7 @@ export default function RegionsMap({ photos, overlayActive, onRegionSelect, onBa
         }
         let value = labelFontValues.get(size)
         if (!value) {
-          value = `600 ${size}px ${LABEL_FONT_STACKS[langRef.current.startsWith('zh') ? 'zh' : 'ja']}`
+          value = `600 ${size}px ${langRef.current === 'ja' ? LABEL_FONT_STACKS.ja : '"Inter", "Noto Sans", system-ui, sans-serif'}`
           labelFontValues.set(size, value)
         }
         return value
@@ -1299,7 +1296,7 @@ export default function RegionsMap({ photos, overlayActive, onRegionSelect, onBa
       {
         loading &&
         <div className='map-loading'>
-          <Spinner/>
+          <Spinner aria-label={t("loading")}/>
         </div>
       }
 

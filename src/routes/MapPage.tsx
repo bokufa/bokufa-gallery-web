@@ -22,10 +22,13 @@ import { MapTokenContext, MapType } from "../contexts/MapToken";
 import type { Photo, PhotoClusterItem } from "../models/gallery";
 import { fetchMapboxToken, isCanceledMapRequest } from "../services/map";
 import { fetchMapPhotos, isCanceledPhotoRequest } from "../services/photos";
-import { applyChineseMapLabels } from "../utils/mapbox";
+import { applyLocalMapLabels } from "../utils/mapbox";
+import { localizeMapControls } from "../utils/mapUi";
 import { buildPhotoMapItems } from "../utils/photoMap";
 
 import "mapbox-gl/dist/mapbox-gl.css";
+
+import { useLanguage } from "../contexts/LanguageContext";
 
 type LoadState = "loading" | "ready" | "error";
 
@@ -105,6 +108,9 @@ export default function MapPage({ isActive, overlayActive }: MapPageProps) {
   const [mapContainer, setMapContainer] = useState<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const tokenContext = useContext(MapTokenContext);
+  const { t } = useLanguage();
+  const uiTextRef = useRef(t);
+  uiTextRef.current = t;
   const navigate = useNavigate();
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
@@ -218,6 +224,7 @@ export default function MapPage({ isActive, overlayActive }: MapPageProps) {
       mapRef.current = activeMap;
       activeMap.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "bottom-right");
       activeMap.addControl(new mapboxgl.AttributionControl({ compact: true }));
+      localizeMapControls(activeMap, uiTextRef.current);
 
       styleTimeout = window.setTimeout(() => {
         if (activeMap && !activeMap.isStyleLoaded()) setMapState("error");
@@ -226,7 +233,8 @@ export default function MapPage({ isActive, overlayActive }: MapPageProps) {
       activeMap.once("style.load", () => {
         if (!activeMap) return;
         if (styleTimeout !== undefined) window.clearTimeout(styleTimeout);
-        applyChineseMapLabels(activeMap);
+        applyLocalMapLabels(activeMap);
+        localizeMapControls(activeMap, uiTextRef.current);
         setMapState("ready");
       });
 
@@ -248,6 +256,10 @@ export default function MapPage({ isActive, overlayActive }: MapPageProps) {
       if (mapRef.current === activeMap) mapRef.current = null;
     };
   }, [clusterItems, loadState, mapContainer, openPhoto, tokenContext?.token?.token, view]);
+
+  useEffect(() => {
+    if (mapRef.current) localizeMapControls(mapRef.current, t);
+  }, [t]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -301,7 +313,7 @@ export default function MapPage({ isActive, overlayActive }: MapPageProps) {
         <div className="absolute inset-0 flex items-center justify-center bg-white/55 backdrop-blur-sm">
           <Spinner
             color="default"
-            label="loading"
+            label={t("loading")}
             classNames={{ label: "text-default-500" }}
           />
         </div>
@@ -310,13 +322,13 @@ export default function MapPage({ isActive, overlayActive }: MapPageProps) {
       {hasError ? (
         <div className="absolute inset-0 flex items-center justify-center bg-white/65 px-6 backdrop-blur-md">
           <div className="rounded-large bg-white/85 p-6 text-center shadow-medium">
-            <p className="mb-4 text-sm text-default-500">照片地图暂时无法加载。</p>
+            <p className="mb-4 text-sm text-default-500">{t("map.error")}</p>
             <Button
               variant="flat"
               startContent={<TbRefresh size={18} />}
               onPress={() => setRequestVersion((version) => version + 1)}
             >
-              重试
+              {t("retry")}
             </Button>
           </div>
         </div>

@@ -12,10 +12,14 @@ import PhotoTitle from "../components/PhotoTitle";
 import useMediaQuery from "../hooks/useMediaQuery";
 import type { Photo } from "../models/gallery";
 import { fetchPhoto, isCanceledPhotoRequest } from "../services/photos";
+import { isFilmPhoto } from "../utils/film";
+import { nativeCityName, nativeCountryName, nativePrefectureName } from "../utils/placeNames";
+import { useLanguage } from "../contexts/LanguageContext";
 
 type LoadState = "loading" | "ready" | "error" | "not-found";
 
 export default function PhotoPage() {
+  const { t } = useLanguage();
   const { id } = useParams();
   const navigate = useNavigate();
   const isDesktop = useMediaQuery("(min-width: 960px)");
@@ -51,13 +55,13 @@ export default function PhotoPage() {
     if (!city) return null;
     return (
       <div className="flex gap-1 font-bold text-foreground">
-        {city.prefecture.country.name} {city.prefecture.name} {city.name}
+        {nativeCountryName(city.prefecture.country)} {nativePrefectureName(city.prefecture)} {nativeCityName(city)}
       </div>
     );
   }, [photo]);
 
   if (loadState === "loading") {
-    return <div className="flex min-h-[55vh] items-center justify-center"><Spinner label="正在加载照片" /></div>;
+    return <div className="flex min-h-[55vh] items-center justify-center"><Spinner label={t("photo.loading")} /></div>;
   }
 
   if (!photo || loadState !== "ready") {
@@ -65,12 +69,12 @@ export default function PhotoPage() {
       <div className="flex min-h-[55vh] items-center justify-center px-6">
         <div className="text-center">
           <p className="mb-4 text-sm text-default-500">
-            {loadState === "not-found" ? "没有找到这张照片。" : "照片暂时无法加载。"}
+            {t(loadState === "not-found" ? "photo.notFound" : "photo.error")}
           </p>
           <div className="flex justify-center gap-2">
-            <Button variant="light" onPress={() => navigate(-1)}>返回</Button>
+            <Button variant="light" onPress={() => navigate(-1)}>{t("back")}</Button>
             {loadState === "error" ? (
-              <Button variant="flat" onPress={() => setRequestVersion((version) => version + 1)}>重试</Button>
+              <Button variant="flat" onPress={() => setRequestVersion((version) => version + 1)}>{t("retry")}</Button>
             ) : null}
           </div>
         </div>
@@ -88,7 +92,7 @@ export default function PhotoPage() {
           startContent={<HiArrowLongLeft size={20} />}
           onPress={() => navigate(-1)}
         >
-          返回
+          {t("back")}
         </Button>
         <span className="text-3xl text-default-400 md:text-4xl">#{photo.id}</span>
       </div>
@@ -101,7 +105,7 @@ export default function PhotoPage() {
       </div>
       <div className="px-1 pt-2"><PhotoTitle photo={photo} /></div>
 
-      {photo.description ? (
+      {photo.description && !isFilmPhoto(photo) ? (
         <Card className="mt-4">
           <CardBody className="whitespace-pre-wrap text-sm leading-7 text-default-600">
             {photo.description}

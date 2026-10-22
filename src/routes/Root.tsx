@@ -8,24 +8,27 @@ import { MapToken, MapTokenContext, MapType } from "../contexts/MapToken";
 import atogakiIcon from "../../atogaki.png";
 import { fetchMapboxToken } from "../services/map";
 import MapPage from "./MapPage";
+import { useLanguage } from "../contexts/LanguageContext";
+import LanguageSwitcher from "../components/LanguageSwitcher";
 // import gradLeft from '../assets/gradients/left.png';
 // import gradRight from '../assets/gradients/right.png';
 
 const routes = [
-  { route: '/', text: '主页', icon: <TbHome size={22}/> },
-  { route: '/film', text: '胶片', icon: <TbMovie size={22}/> },
-  { route: '/map', text: '地图', icon: <TbMap size={22}/> },
+  { route: '/', text: 'nav.home', icon: <TbHome size={22}/> },
+  { route: '/film', text: 'nav.film', icon: <TbMovie size={22}/> },
+  { route: '/map', text: 'nav.map', icon: <TbMap size={22}/> },
   { route: '/blog', text: '後書き', icon: <TbNotebook size={22}/> },
-];
+] as const;
 
 function ProjectContactLinks() {
+  const { t } = useLanguage();
   return (
     <div className="mt-2 flex items-center gap-3">
       <a
         href="https://www.instagram.com/inochiwa_39/"
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="在 Instagram 查看 inochiwa_39"
+        aria-label={t("contact.instagram")}
         title="Instagram"
         className="inline-flex rounded py-1 text-default-400 transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
       >
@@ -35,7 +38,7 @@ function ProjectContactLinks() {
         href="https://github.com/bokufa/bokufa-gallery-web"
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="在 GitHub 查看项目源码"
+        aria-label={t("contact.github")}
         title="GitHub"
         className="inline-flex rounded py-1 text-default-400 transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
       >
@@ -43,7 +46,7 @@ function ProjectContactLinks() {
       </a>
       <a
         href="mailto:2385780045@qq.com"
-        aria-label="发送邮件到 2385780045@qq.com"
+        aria-label={t("contact.email", { email: "2385780045@qq.com" })}
         title="2385780045@qq.com"
         className="inline-flex rounded py-1 text-default-400 transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
       >
@@ -54,13 +57,16 @@ function ProjectContactLinks() {
 }
 
 export default function Root() {
+  const { t } = useLanguage();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [token, setToken] = useState<MapToken>()
   const navigate = useNavigate();
   const location = useLocation();
   const isBlogRoute = location.pathname.startsWith('/blog');
+  const isFilmRoute = location.pathname === '/film';
   const isMapRoute = location.pathname === '/map';
   const isMapSection = location.pathname === '/map' || location.pathname.startsWith('/map/');
+  const isFloatingSection = isMapSection || isFilmRoute;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -78,6 +84,12 @@ export default function Root() {
     <MapTokenContext.Provider value={{ token, setToken }}>
       <main className="relative min-h-dvh text-foreground scrollbar-hide">
         <MapPage isActive={isMapSection} overlayActive={isMapSection && !isMapRoute} />
+        <div
+          aria-hidden="true"
+          className={`film-light-table pointer-events-none fixed inset-0 z-0 transition-opacity duration-500 ease-out ${
+            isFilmRoute ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
         <div
           aria-hidden="true"
           className={`pointer-events-none fixed inset-0 z-0 transition-opacity duration-700 ease-out ${
@@ -99,7 +111,7 @@ export default function Root() {
           onMenuOpenChange={setIsMenuOpen}
           isMenuOpen={isMenuOpen}
           className={`pointer-events-auto border-b border-black/5 shadow-sm transition-[background-color,backdrop-filter] duration-700 ease-out ${
-            isMapSection
+            isFloatingSection
               ? 'map-glass-panel'
               : 'bg-[rgba(255,255,255,0.55)] backdrop-blur-md'
           } ${
@@ -110,6 +122,7 @@ export default function Root() {
             <Link className="site-brand-title text-inherit" href='/'>Nihon Saien</Link>
           </NavbarBrand>
           <NavbarContent justify="end">
+            <LanguageSwitcher />
             {isBlogRoute ? (
               <Link
                 aria-label="後書き"
@@ -125,6 +138,7 @@ export default function Root() {
               </Link>
             ) : null}
             <NavbarMenuToggle
+              aria-label={t(isMenuOpen ? "menu.close" : "menu.open")}
               className={`sm:hidden ml-2 ${isBlogRoute ? 'text-[#382920]' : 'text-foreground'}`}
             />
           </NavbarContent>
@@ -142,23 +156,25 @@ export default function Root() {
                 >
                   {r.icon}
                   <Spacer x={2}/>
-                  {r.text}
+                  {r.text === '後書き' ? r.text : t(r.text)}
                 </Link>
               </NavbarMenuItem>
             ))}
             <Divider className='mt-4 mb-4'/>
             <div className='text-tiny text-default-400'>
-              <p>© {new Date().getFullYear()} Bokufa's Gallery. All rights reserved.</p>
+              <p>© {new Date().getFullYear()} Bokufa's Gallery. {t("rights")}</p>
               <ProjectContactLinks />
             </div>
           </NavbarMenu>
         </Navbar>
         <div
-          className="mx-auto max-w-[1024px] flex"
+          className={isFilmRoute ? 'film-layout-shell' : 'mx-auto max-w-[1024px] flex'}
           style={{ minHeight: 'calc(100dvh - 4rem)' }}
         >
           <div className={`relative z-30 max-w-64 hidden md:flex flex-col sticky top-[5rem] h-[100%] flex-shrink-0 pb-6 transition-[background-color,box-shadow,backdrop-filter] ${
-            isMapSection ? 'map-glass-panel pointer-events-auto rounded-large shadow-medium' : ''
+            isFilmRoute ? 'film-floating-sidebar' : ''
+          } ${
+            isFloatingSection ? 'map-glass-panel pointer-events-auto rounded-large shadow-medium' : ''
           }`}>
             <ul>
               {routes.map((r) => (
@@ -172,7 +188,7 @@ export default function Root() {
                     <span className="text-medium font-bold flex items-center">
                       {r.icon}
                       <Spacer x={2}/>
-                      {r.text}
+                      {r.text === '後書き' ? r.text : t(r.text)}
                     </span>
                   </Link>
                 </li>
@@ -180,7 +196,7 @@ export default function Root() {
             </ul>
             <Divider className='mt-4 mb-4'/>
             <div className='text-tiny text-default-300 px-4'>
-              <p>© {new Date().getFullYear()} Bokufa's Gallery. All rights reserved.</p>
+              <p>© {new Date().getFullYear()} Bokufa's Gallery. {t("rights")}</p>
               <ProjectContactLinks />
             </div>
           </div>

@@ -1,7 +1,8 @@
 import { Photo } from "../models/gallery.ts";
 import { Modal, ModalContent, ModalHeader, ModalBody, Spacer } from "@heroui/react";
 import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import { fetchPhoto } from "../services/photos";
+import { nativeCityName, nativeCountryName, nativePrefectureName } from "../utils/placeNames";
 import useMediaQuery from "../hooks/useMediaQuery.tsx";
 import PhotoImageCard from "./PhotoImageCard";
 import PhotoLocationInfo from "./PhotoLocationInfo";
@@ -22,25 +23,22 @@ export default function PhotoModal(props: PhotoModalProps) {
 	const [loading, setLoading] = useState(true)
 
 	useEffect(() => {
-		if (props.isOpen) {
-				setLoading(true)
-				setTimeout(() => {
-					axios.get< {payload: Photo} >(`https://api.bokufa.art/api/photos/${props.photo.id}`)
-						.then(res => {
-							setPhoto(res.data.payload)
-							setLoading(false)
-						})
-				}, 300)
-		}
+		if (!props.isOpen) return;
+		const controller = new AbortController();
+		setPhoto(props.photo);
+		setLoading(true);
+		void fetchPhoto(props.photo.id, controller.signal)
+			.then(next => { if (!controller.signal.aborted) setPhoto(next); })
+			.catch(() => { /* Keep the list photo if details are unavailable. */ })
+			.finally(() => { if (!controller.signal.aborted) setLoading(false); });
+		return () => controller.abort();
 	}, [props.isOpen, props.photo.id])
 
 
 	const isPortrait = photo.thumb_file.width <= photo.thumb_file.height;
 	const cityLinks = useMemo(() => (
 		<div className='flex gap-1 font-bold text-foreground'>
-			{photo.metadata.city?.prefecture.country.name} {' '}
-			{photo.metadata.city?.prefecture.name} {' '}
-			{photo.metadata.city?.name}
+			{photo.metadata.city ? [nativeCountryName(photo.metadata.city.prefecture.country), nativePrefectureName(photo.metadata.city.prefecture), nativeCityName(photo.metadata.city)].join(" ") : ""}
 		</div>
 	), [
 		photo.metadata.city?.id,

@@ -7,12 +7,15 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import PhotoMasonry from "../components/PhotoMasonry";
 import type { Photo } from "../models/gallery";
 import { fetchPhotos } from "../services/photos";
+import { countryCodeFor, localPlaceLocale, nativeCityName, nativePrefectureName } from "../utils/placeNames";
+import { useLanguage } from "../contexts/LanguageContext";
 
 interface PrefectureLocationState {
   prefectureName?: string;
 }
 
 export default function PrefecturePage() {
+  const { t } = useLanguage();
   const { prefectureId, cityId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -39,19 +42,21 @@ export default function PrefecturePage() {
       const existing = byId.get(city.id);
       byId.set(city.id, {
         id: city.id,
-        name: city.name,
+        name: nativeCityName(city),
         photos_count: (existing?.photos_count || 0) + 1,
       });
     }
-    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+    const code = countryCodeFor(regionPhotos?.[0]?.metadata.city?.prefecture.country);
+    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, localPlaceLocale(code)));
   }, [regionPhotos]);
 
   if (!prefectureId || !regionPhotos) return null;
-  const prefectureName = routeState?.prefectureName
-    || regionPhotos[0]?.metadata.city?.prefecture.name
-    || "地区";
+  const region = regionPhotos[0]?.metadata.city?.prefecture;
+  const prefectureName = region
+    ? nativePrefectureName({ ...region, name: routeState?.prefectureName || region.name })
+    : routeState?.prefectureName || t("map.regions");
   const areas = [
-    { id: 0, name: `${prefectureName}全部区域`, photos_count: regionPhotos.length },
+    { id: 0, name: t("map.allAreas", { region: prefectureName }), photos_count: regionPhotos.length },
     ...cities,
   ];
 
@@ -78,7 +83,7 @@ export default function PrefecturePage() {
           startContent={<TbMap size={16} />}
           onPress={() => navigate("/map")}
         >
-          返回地图
+          {t("map.back")}
         </Button>
 
         <div className="mb-4 ml-2 pt-2 text-5xl md:mb-6">
@@ -87,7 +92,7 @@ export default function PrefecturePage() {
 
         <div className="mb-8 md:mb-12">
           <Select
-            label="城市"
+            label={t("map.city")}
             selectedKeys={[cityId ?? "0"]}
             onChange={(event) => {
               const path = event.target.value === "0"

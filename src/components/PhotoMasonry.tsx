@@ -1,5 +1,6 @@
 import { Button, Card, CardBody, CardFooter, Spinner, useDisclosure } from "@heroui/react";
 import { useWindowSize } from "@react-hook/window-size";
+import { nativeCityName, nativeCountryName, nativePrefectureName } from "../utils/placeNames";
 import {
   useContainerPosition,
   useInfiniteLoader,
@@ -10,6 +11,7 @@ import {
 } from "masonic";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "../contexts/LanguageContext";
 
 import useMediaQuery from "../hooks/useMediaQuery";
 import type { Photo } from "../models/gallery";
@@ -31,6 +33,7 @@ function createPhotoMasonryCacheKey(prefectureId?: string, cityId?: string, film
 }
 
 export default function PhotoMasonry({ prefectureId, cityId, filmOnly = false }: PhotoMasonryProps) {
+  const { t } = useLanguage();
   const cacheKey = createPhotoMasonryCacheKey(prefectureId, cityId, filmOnly);
   const cachedPhotos = photoMasonryCache.get(cacheKey);
   const [photos, setPhotos] = useState<Photo[]>(() => cachedPhotos || []);
@@ -137,21 +140,21 @@ export default function PhotoMasonry({ prefectureId, cityId, filmOnly = false }:
         <div className="flex min-h-[calc(100dvh-6rem)] items-center justify-center">
           <Spinner
             color="default"
-            label="loading"
+            label={t("loading")}
             classNames={{ label: "text-default-500" }}
           />
         </div>
       ) : null}
       {!isInitialLoading && loadError ? (
         <div role="alert" className="flex min-h-48 flex-col items-center justify-center gap-3 text-default-500">
-          <p>照片暂时无法加载</p>
+          <p>{t("photo.error")}</p>
           <Button size="sm" variant="flat" onPress={() => setRetryCount((count) => count + 1)}>
-            重试
+            {t("retry")}
           </Button>
         </div>
       ) : null}
       {!isInitialLoading && !loadError && filmOnly && !photos.length ? (
-        <p className="py-16 text-center text-small text-default-400">暂无胶片照片</p>
+        <p className="py-16 text-center text-small text-default-400">{t("film.empty")}</p>
       ) : null}
       {photos.length ? (
         <MeasuredMasonryGrid
@@ -292,8 +295,8 @@ const MasonryCard = memo(function MasonryCard({
       </CardBody>
       {data.metadata.city ? (
         <CardFooter className="flex-wrap justify-between text-small">
-          <b>{`${data.metadata.city.prefecture.name} ${data.metadata.city.name}`}</b>
-          <p className="text-default-500">{data.metadata.city.prefecture.country.name}</p>
+          <b>{`${nativePrefectureName(data.metadata.city.prefecture)} ${nativeCityName(data.metadata.city)}`}</b>
+          <p className="text-default-500">{nativeCountryName(data.metadata.city.prefecture.country)}</p>
         </CardFooter>
       ) : null}
     </Card>
