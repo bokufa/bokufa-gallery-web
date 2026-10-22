@@ -456,7 +456,7 @@ export function mountFilmLoupe({
         const edgeState = labels
           .map(
             (label) =>
-              `${label.dataset.edgeText}:${label.dataset.edgeHdrReady}:${label.childElementCount}`,
+              `${label.dataset.edgeText}:${label.dataset.edgeHdrReady}:${label.dataset.edgeHdrSettled}:${label.childElementCount}`,
           )
           .join("|");
 
@@ -477,6 +477,10 @@ export function mountFilmLoupe({
               copy.setAttribute(
                 "data-edge-hdr-ready",
                 label.dataset.edgeHdrReady ?? "false",
+              );
+              copy.setAttribute(
+                "data-edge-hdr-settled",
+                label.dataset.edgeHdrSettled ?? "false",
               );
             } else copy?.replaceWith(label.cloneNode(true));
           });

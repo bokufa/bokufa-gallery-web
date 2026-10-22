@@ -413,6 +413,12 @@
   opacity: 1;
 }
 
+/* Safari may keep an HDR gain-map image in its SDR transition surface after
+   the fade. Dropping the transition after it settles forces native HDR paint. */
+.film-edge-label[data-edge-hdr-settled="true"] > .film-edge-hdr {
+  transition: none;
+}
+
 .film-canvas[data-hdr-enabled="true"] {
   --film-edge-ink: #ffc625;
 }

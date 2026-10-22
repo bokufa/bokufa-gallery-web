@@ -44,6 +44,7 @@ export default function FilmEdgeMark({
   const letters = [...text.toUpperCase()];
   const columns = Math.max(1, letters.length * 6 - 1);
   const [ready, setReady] = useState(false);
+  const [settled, setSettled] = useState(false);
   const [retained, setRetained] = useState(false);
   const image = useRef<HTMLImageElement>(null);
   const src = FILM_EDGE_HDR_LABELS[text.toUpperCase()];
@@ -98,11 +99,24 @@ export default function FilmEdgeMark({
     };
   }, [showImage, src]);
 
+  useEffect(() => {
+    setSettled(false);
+    if (!active || !enabled || !ready) return;
+
+    // WebKit can retain an SDR compositor texture after an HDR image opacity
+    // transition. Rebuild the label without an active transition once the
+    // light-up fade is complete, while preserving that fade on every toggle.
+    const timer = setTimeout(() => setSettled(true), 650);
+
+    return () => clearTimeout(timer);
+  }, [active, enabled, ready]);
+
   return (
     <span
       aria-hidden="true"
       className="film-edge-label"
       data-edge-hdr-ready={active && enabled && ready}
+      data-edge-hdr-settled={active && enabled && ready && settled}
       data-edge-text={text}
       style={{
         // Avoid WebKit's cyclic max-content sizing for a percentage-width SVG

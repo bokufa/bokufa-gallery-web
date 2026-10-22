@@ -43,6 +43,7 @@ test('HDR labels use one small whole-label image rather than an atlas image per 
   globalThis.__testEdgeHdr = true;
   const html = renderToStaticMarkup(React.createElement(FilmEdgeMark, { text: '▶ RDP III' }));
   assert.match(html, /data-edge-hdr-ready="false"/);
+  assert.match(html, /data-edge-hdr-settled="false"/);
   assert.match(html, /data-hdr-active="true"/);
   const urls = [...html.matchAll(/<img[^>]+src="([^"]+)"/g)].map(match => match[1]);
   assert.equal(urls.length, 1);
@@ -87,6 +88,7 @@ test('LED, photo and edge layers share a reversible 600ms fade without hiding th
   }
   assert(!css.includes('.buffered-photo-layer { transition: none !important; }'));
   assert(!css.includes('> .film-edge-dots {\n  visibility: hidden;'), 'SDR lettering remains visible beneath the native HDR fade');
+  assert.match(css, /\.film-edge-label\[data-edge-hdr-settled="true"\] > \.film-edge-hdr\s*\{\s*transition: none/);
 });
 
 test('HDR atlas matches every glyph and contains compatible ISO plus legacy Adobe metadata', async () => {
