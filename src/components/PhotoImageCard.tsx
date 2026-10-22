@@ -3,7 +3,6 @@ import moment from "moment";
 import { useState } from "react";
 
 import { Photo } from "../models/gallery";
-import { useHdr } from "../contexts/HdrContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { sdrPhotoFile } from "../utils/photoSources";
 import usePhotoSource from "../hooks/usePhotoSource";
@@ -18,14 +17,13 @@ export default function PhotoImageCard({
   photo: Photo;
   isDesktop: boolean;
 }) {
-  const { enabled: tableEnabled } = useHdr();
   const { t } = useLanguage();
-  // Inherit only the initial table mode; detail controls never write the table.
+  // Each newly opened photo starts in SDR, independent of the film table mode.
   const [localHdr, setLocalHdr] = useState({
     id: photo.id,
-    enabled: tableEnabled,
+    enabled: false,
   });
-  const enabled = localHdr.id === photo.id ? localHdr.enabled : tableEnabled;
+  const enabled = localHdr.id === photo.id && localHdr.enabled;
   const sdr = sdrPhotoFile(photo);
   const { image, loading, error } = usePhotoSource(photo, enabled);
 
