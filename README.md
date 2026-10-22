@@ -1,35 +1,23 @@
-The forntend code for my gallery "Nihon Saien" :)
+# Nihon Saien
 
-Main code from https://github.com/hebingchang/boar-gallery-web
+The frontend for my personal photography gallery, **Nihon Saien**.
 
-## TODO
+Based on [boar-gallery-web](https://github.com/hebingchang/boar-gallery-web).
 
-- Single Photo Page
+## Features
 
-- Map View
-
-- Connecting Speed Optimization
-
-- And More...
-
+- Responsive photo stream and single-photo pages
+- Mapbox photo map with regional galleries
+- Film contact sheet with HDR light table and loupe
+- Markdown travel journal (後書き)
+- Chinese, Japanese, and English interfaces
+- Native place names supplied by the upload pipeline
 
 ## Log
 
-202509 add Mapbox in Photo Details
-202608 add map page
-202610 add film page
-202610 add HDR support in film view and photo details
-202610 add loupe and HDR light-table background
-202610 store local place names during photo upload and use them in details and maps
-202610 add Chinese, Japanese and English interface switching
-202610 soften light-table brightness and add transparent 135 perforations
-202610 render warm film edge lettering with native HDR gain maps
-202610 crossfade HDR photos, LED lighting and film edge lettering
-202610 fade in the film light table on every page visit
-202610 reduce the default film display size to 65% of the previous baseline
-202610 bound HDR decoding and release offscreen film textures
-202610 use compact whole-label HDR lettering and shared map-style controls
-202610 use fixed low-resolution HDR table previews and loupe-only detail loading
-202610 limit loupe detail textures and recover stalled image decode jobs
-202610 add capped 1600px high-zoom overlays and 4096px loupe HDR details
-202610 keep low-resolution film previews mounted beneath removable detail layers
+- 2025-09 — Added Mapbox to photo details
+- 2026-08 — Added the photo map and regional galleries
+- 2026-10 — Added the film contact sheet, HDR light table, and loupe
+- 2026-10 — Added optimized tiered HDR image loading and transitions
+- 2026-10 — Added Chinese, Japanese, and English interface switching
+- 2026-10 — Switched photo locations to native names stored during upload
