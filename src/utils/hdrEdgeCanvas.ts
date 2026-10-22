@@ -59,16 +59,9 @@ struct VertexOutput {
 }
 
 @fragment fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
-  let radius = length(input.local);
-  let coverage = 1.0 - smoothstep(0.72, 1.0, radius);
-  let center = input.color.rgb;
-  let middle = vec3f(4.0, 2.0596707, 0.0705678);
-  let rim = vec3f(3.2278090, 0.8489230, 0.0160989);
-  let center_to_middle = smoothstep(0.0, 0.55, radius);
-  let middle_to_rim = smoothstep(0.55, 1.0, radius);
-  let warm = mix(mix(center, middle, center_to_middle), rim, middle_to_rim);
+  let coverage = 1.0 - smoothstep(0.72, 1.0, length(input.local));
   let alpha = input.color.a * coverage;
-  return vec4f(warm * alpha, alpha);
+  return vec4f(input.color.rgb * alpha, alpha);
 }
 `;
 
@@ -117,10 +110,11 @@ export function mountHdrEdgeCanvas(
     if (canvas.width !== canvasWidth) canvas.width = canvasWidth;
     if (canvas.height !== canvasHeight) canvas.height = canvasHeight;
     const values: number[] = [];
-    // Match the original gain-map label's #ffcd36 → #ffbe24 → #e87f0d
-    // radial ink in extended linear sRGB. Keeping the target color stable and
-    // animating only alpha prevents hue shifts during the light-up transition.
-    const warm = [4, 2.4419823, 0.1475578, progress];
+    // ImageIO's extended-linear decode at the center of the original gain-map
+    // ink. A solid target is intentional: at tiny screen sizes a radial rim
+    // collapses into most of the sampled dot and makes the lettering look dark
+    // orange, although the full-size loupe still looks golden.
+    const warm = [4.1551948, 2.4346282, 0.1112604, progress];
     const corners = [
       [-1, -1],
       [1, -1],

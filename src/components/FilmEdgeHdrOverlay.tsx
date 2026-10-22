@@ -180,16 +180,8 @@ export default function FilmEdgeHdrOverlay({
         const text = source.dataset.edgeText?.toUpperCase();
         const src = text ? FILM_EDGE_HDR_LABELS[text] : undefined;
         const vector = source.querySelector<SVGSVGElement>(".film-edge-dots");
-        const enteringFrame = source.closest<HTMLElement>(".film-frame-enter");
 
-        if (
-          !text ||
-          !src ||
-          !vector ||
-          (enteringFrame &&
-            getComputedStyle(enteringFrame).animationName !== "none")
-        )
-          continue;
+        if (!text || !src || !vector) continue;
         const rect = source.getBoundingClientRect();
         const vertical = rect.height > rect.width;
         let label = labels.get(source);
@@ -245,7 +237,13 @@ export default function FilmEdgeHdrOverlay({
     };
     const queueRebuild = () => {
       cancelAnimationFrame(rebuildFrame);
-      rebuildFrame = requestAnimationFrame(rebuild);
+      // FilmCanvas commits its initial scene transform in a frame as well.
+      // Measure on the following frame so even initially offscreen rows get
+      // world coordinates from the committed transform, without waiting for
+      // their opacity-only entrance animation to finish.
+      rebuildFrame = requestAnimationFrame(() => {
+        rebuildFrame = requestAnimationFrame(rebuild);
+      });
     };
     const containsEdgeLabel = (nodes: NodeList) =>
       [...nodes].some(
