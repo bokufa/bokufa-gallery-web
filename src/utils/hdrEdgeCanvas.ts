@@ -114,7 +114,9 @@ export function mountHdrEdgeCanvas(
     // ink. A solid target is intentional: at tiny screen sizes a radial rim
     // collapses into most of the sampled dot and makes the lettering look dark
     // orange, although the full-size loupe still looks golden.
-    const warm = [4.1551948, 2.4346282, 0.1112604, progress];
+    // A very small luminance-preserving desaturation compensates for WebGPU's
+    // warmer presentation versus the native gain-map image on mobile Safari.
+    const warm = [4.1095, 2.4406, 0.1869, progress];
     const corners = [
       [-1, -1],
       [1, -1],

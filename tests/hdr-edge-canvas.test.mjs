@@ -102,9 +102,9 @@ test("edge dots use one persistent extended HDR canvas and redraw without restar
   animate(performance.now() + 600);
   assert.equal(calls.draws.at(-1), 6);
   assert(calls.writes.at(-1).some(value => value > 1), "HDR ink contains extended-range color values");
-  assert(Math.abs(calls.writes.at(-1)[4] - 4.1551948) < 0.0001, "HDR ink uses the gain-map center red");
-  assert(Math.abs(calls.writes.at(-1)[5] - 2.4346282) < 0.0001, "HDR ink uses the gain-map center green");
-  assert(Math.abs(calls.writes.at(-1)[6] - 0.1112604) < 0.0001, "HDR ink uses the gain-map center blue");
+  assert(Math.abs(calls.writes.at(-1)[4] - 4.1095) < 0.0001, "HDR ink keeps the calibrated golden red");
+  assert(Math.abs(calls.writes.at(-1)[5] - 2.4406) < 0.0001, "HDR ink keeps the calibrated golden green");
+  assert(Math.abs(calls.writes.at(-1)[6] - 0.1869) < 0.0001, "HDR ink gently desaturates the calibrated golden blue");
   frames.clear();
   renderer.updateScene(100, 80, 2, [
     { x: 24, y: 30, radiusX: 2, radiusY: 2 },
