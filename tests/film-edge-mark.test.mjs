@@ -111,6 +111,9 @@ test('LED and photo layers fade while native HDR edge ink stays out of animated 
 
 test('mobile edge HDR is mirrored outside the transformed film scene without layout reads during gestures', () => {
   assert.match(overlay, /className="film-edge-screen-overlay"/);
+  assert.match(overlay, /className="film-edge-screen-canvas"/);
+  assert.match(overlay, /mountHdrEdgeCanvas/);
+  assert.match(overlay, /rendererRef\.current\?\.updateScene/);
   assert.match(overlay, /FILM_EDGE_HDR_LABELS/);
   assert.match(overlay, /worldLeft:/);
   assert.match(overlay, /worldTop:/);

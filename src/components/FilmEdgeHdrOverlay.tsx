@@ -4,7 +4,8 @@ import type { CanvasView } from "../utils/filmCanvas";
 import { useEffect, useRef, useState } from "react";
 
 import { useHdr } from "../contexts/HdrContext";
-import { FILM_EDGE_HDR_LABELS } from "../utils/filmGlyphs";
+import { filmGlyphs, FILM_EDGE_HDR_LABELS } from "../utils/filmGlyphs";
+import { mountHdrEdgeCanvas, type HdrEdgeDot } from "../utils/hdrEdgeCanvas";
 
 interface FilmEdgeHdrOverlayProps {
   viewportRef: RefObject<HTMLDivElement>;
@@ -18,6 +19,8 @@ interface ManagedLabel {
   overlay: HTMLSpanElement;
   image: HTMLImageElement;
   imageSrc: string;
+  text: string;
+  vertical: boolean;
   worldLeft: number;
   worldTop: number;
   worldWidth: number;
@@ -32,7 +35,23 @@ export default function FilmEdgeHdrOverlay({
 }: FilmEdgeHdrOverlayProps) {
   const { enabled } = useHdr();
   const overlayRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rendererRef = useRef<ReturnType<typeof mountHdrEdgeCanvas>>();
   const [retained, setRetained] = useState(enabled);
+  const [canvasReady, setCanvasReady] = useState(false);
+
+  useEffect(() => {
+    const renderer = mountHdrEdgeCanvas(canvasRef.current!, setCanvasReady);
+
+    rendererRef.current = renderer;
+
+    return () => {
+      rendererRef.current = undefined;
+      renderer.destroy();
+    };
+  }, []);
+
+  useEffect(() => rendererRef.current?.setEnabled(enabled), [enabled]);
 
   useEffect(() => {
     if (enabled) {
@@ -59,6 +78,8 @@ export default function FilmEdgeHdrOverlay({
       const wantsHdr =
         overlay.dataset.active === "true" ||
         overlay.dataset.retained === "true";
+      const wantsImageHdr = wantsHdr && overlay.dataset.canvasReady !== "true";
+      const dots: HdrEdgeDot[] = [];
 
       for (const label of labels.values()) {
         const left = view.x + label.worldLeft * view.scale;
@@ -85,9 +106,38 @@ export default function FilmEdgeHdrOverlay({
           top >= height;
 
         label.overlay.hidden = hidden;
+        if (!hidden) {
+          const columns = Math.max(1, label.text.length * 6 - 1);
+
+          [...label.text].forEach((letter, index) =>
+            (filmGlyphs[letter] ?? []).forEach((row, y) =>
+              [...row].forEach((dot, x) => {
+                if (dot !== "1") return;
+                const gridX = index * 6 + x + 0.5;
+                const gridY = y + 0.5;
+
+                dots.push(
+                  label.vertical
+                    ? {
+                        x: left + (gridY / 7) * itemWidth,
+                        y: top + (1 - gridX / columns) * itemHeight,
+                        radiusX: (0.42 / 7) * itemWidth,
+                        radiusY: (0.42 / columns) * itemHeight,
+                      }
+                    : {
+                        x: left + (gridX / columns) * itemWidth,
+                        y: top + (gridY / 7) * itemHeight,
+                        radiusX: (0.42 / columns) * itemWidth,
+                        radiusY: (0.42 / 7) * itemHeight,
+                      },
+                );
+              }),
+            ),
+          );
+        }
         if (
           !hidden &&
-          wantsHdr &&
+          wantsImageHdr &&
           label.image.dataset.loading !== "true" &&
           !label.image.getAttribute("src")
         ) {
@@ -103,6 +153,12 @@ export default function FilmEdgeHdrOverlay({
             .finally(() => delete label.image.dataset.loading);
         }
       }
+      rendererRef.current?.updateScene(
+        width,
+        height,
+        window.devicePixelRatio || 1,
+        dots,
+      );
     };
     const remove = (label: ManagedLabel) => {
       delete label.source.dataset.edgeScreenManaged;
@@ -127,6 +183,7 @@ export default function FilmEdgeHdrOverlay({
         const enteringFrame = source.closest<HTMLElement>(".film-frame-enter");
 
         if (
+          !text ||
           !src ||
           !vector ||
           (enteringFrame &&
@@ -164,6 +221,8 @@ export default function FilmEdgeHdrOverlay({
             overlay: item,
             image,
             imageSrc: src,
+            text,
+            vertical,
             worldLeft: 0,
             worldTop: 0,
             worldWidth: 0,
@@ -172,6 +231,7 @@ export default function FilmEdgeHdrOverlay({
           labels.set(source, label);
         }
         label.overlay.classList.toggle("is-vertical", vertical);
+        label.vertical = vertical;
         label.worldLeft = (rect.left - viewportRect.left - view.x) / view.scale;
         label.worldTop = (rect.top - viewportRect.top - view.y) / view.scale;
         label.worldWidth = rect.width / view.scale;
@@ -231,7 +291,7 @@ export default function FilmEdgeHdrOverlay({
 
   useEffect(
     () => sceneChangedRef.current(),
-    [enabled, retained, sceneChangedRef],
+    [canvasReady, enabled, retained, sceneChangedRef],
   );
 
   return (
@@ -240,7 +300,15 @@ export default function FilmEdgeHdrOverlay({
       aria-hidden="true"
       className="film-edge-screen-overlay"
       data-active={enabled}
+      data-canvas-ready={canvasReady}
       data-retained={retained}
-    />
+    >
+      <canvas
+        ref={canvasRef}
+        className="film-edge-screen-canvas"
+        height={1}
+        width={1}
+      />
+    </div>
   );
 }
