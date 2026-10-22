@@ -26,3 +26,6 @@ Main code from https://github.com/hebingchang/boar-gallery-web
 202610 render warm film edge lettering with native HDR gain maps
 202610 crossfade HDR photos, LED lighting and film edge lettering
 202610 fade in the film light table on every page visit
+202610 reduce the default film display size to 65% of the previous baseline
+202610 bound HDR decoding and release offscreen film textures
+202610 use compact whole-label HDR lettering and shared map-style controls

@@ -16,6 +16,7 @@ import { useHdr } from "../contexts/HdrContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import BufferedPhotoImage from "../components/BufferedPhotoImage";
 import { preloadPhotoSource } from "../utils/photoSources";
+import useFilmVisibility from "../hooks/useFilmVisibility";
 
 const loadedFilmImageIds = new Set<number>();
 const loadedFilmMediumIds = new Set<number>();
@@ -61,6 +62,7 @@ function FilmFrame({
   const frameRef = useRef<HTMLButtonElement>(null);
   const { t } = useLanguage();
   const { enabled: hdrEnabled } = useHdr();
+  const visible = useFilmVisibility(frameRef);
   const [imageLoaded, setImageLoaded] = useState(() =>
     loadedFilmImageIds.has(photo.id),
   );
@@ -82,7 +84,7 @@ function FilmFrame({
   const edgeLabel = filmEdgeLabel(stock);
 
   useEffect(() => {
-    const useHdrFile = hdrEnabled && Boolean(photo.hdr_file?.url);
+    const useHdrFile = visible && hdrEnabled && Boolean(photo.hdr_file?.url);
     const mediumFile = useHdrFile ? photo.hdr_file : photo.medium_file;
 
     // Drop HDR immediately on opt-out, even when the frame is outside the viewport.
@@ -94,6 +96,7 @@ function FilmFrame({
       );
 
     if (!mediumFile || mediumFile.url === photo.thumb_file.url) return;
+    if (!visible) return;
     if (!useHdrFile && loadedFilmMediumIds.has(photo.id)) {
       setPreviewUrl(mediumFile.url);
 
@@ -101,7 +104,6 @@ function FilmFrame({
     }
 
     let isActive = true;
-    let observer: IntersectionObserver | undefined;
     const loadMedium = () => {
       let hdrReady = false;
 
@@ -131,23 +133,10 @@ function FilmFrame({
         .catch(() => undefined);
     };
 
-    if (frameRef.current && "IntersectionObserver" in window) {
-      observer = new IntersectionObserver(
-        ([entry]) => {
-          if (!entry.isIntersecting) return;
-          observer?.disconnect();
-          loadMedium();
-        },
-        { rootMargin: "120px 0px" },
-      );
-      observer.observe(frameRef.current);
-    } else {
-      loadMedium();
-    }
+    loadMedium();
 
     return () => {
       isActive = false;
-      observer?.disconnect();
     };
   }, [
     photo.id,
@@ -155,6 +144,7 @@ function FilmFrame({
     photo.hdr_file,
     photo.thumb_file.url,
     hdrEnabled,
+    visible,
   ]);
 
   return (
@@ -181,11 +171,11 @@ function FilmFrame({
       {format === "135" ? <FilmStripBase portrait={portrait} /> : null}
       {format === "120" ? (
         <span aria-hidden="true" className="film-fuji-mark">
-          <FilmEdgeMark text="FUJI" />
+          <FilmEdgeMark active={visible} text="FUJI" />
         </span>
       ) : null}
       <span aria-hidden="true" className="film-edge-copy film-edge-copy-start">
-        <FilmEdgeMark text={edgeLabel} />
+        <FilmEdgeMark active={visible} text={edgeLabel} />
       </span>
       <span
         className={`photo-image-shell film-image-window ${imageLoaded ? "is-loaded" : ""}`}
@@ -204,6 +194,7 @@ function FilmFrame({
           hdrSrc={photo.hdr_file?.url}
           loading="eager"
           src={previewUrl}
+          suspend={!visible}
           onLoad={() => {
             loadedFilmImageIds.add(photo.id);
             setImageLoaded(true);
@@ -211,7 +202,7 @@ function FilmFrame({
         />
       </span>
       <span aria-hidden="true" className="film-edge-copy film-edge-copy-end">
-        <FilmEdgeMark text={`▶ ${edgeLabel}`} />
+        <FilmEdgeMark active={visible} text={`▶ ${edgeLabel}`} />
       </span>
     </button>
   );

@@ -1,34 +1,79 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 
 import { useHdr } from "../contexts/HdrContext";
-import {
-  filmGlyphs,
-  FILM_GLYPH_ORDER,
-  FILM_GLYPH_COLUMNS,
-  FILM_GLYPH_ROWS,
-  FILM_EDGE_HDR_SRC,
-} from "../utils/filmGlyphs";
+import { decodePhotoElement } from "../utils/photoSources";
+import { filmGlyphs, FILM_EDGE_HDR_LABELS } from "../utils/filmGlyphs";
 
-export default function FilmEdgeMark({ text }: { text: string }) {
+// Thousands of fallback dots do not need reconciling on every HDR/ready update.
+const EdgeDots = memo(function EdgeDots({ text }: { text: string }) {
+  const letters = [...text.toUpperCase()];
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="film-edge-dots"
+      fill="currentColor"
+      viewBox={`0 0 ${Math.max(1, letters.length * 6 - 1)} 7`}
+    >
+      {letters.map((letter, index) =>
+        (filmGlyphs[letter] ?? []).flatMap((row, y) =>
+          [...row].map((dot, x) =>
+            dot === "1" ? (
+              <circle
+                key={`${index}-${x}-${y}`}
+                cx={index * 6 + x + 0.5}
+                cy={y + 0.5}
+                r={0.42}
+              />
+            ) : null,
+          ),
+        ),
+      )}
+    </svg>
+  );
+});
+
+export default function FilmEdgeMark({
+  text,
+  active = true,
+}: {
+  text: string;
+  active?: boolean;
+}) {
   const { enabled } = useHdr();
   const letters = [...text.toUpperCase()];
   const [ready, setReady] = useState(false);
-  const [activated, setActivated] = useState(enabled);
-  const images = useRef(new Map<number, HTMLImageElement>());
+  const [retained, setRetained] = useState(false);
+  const image = useRef<HTMLImageElement>(null);
+  const src = FILM_EDGE_HDR_LABELS[text.toUpperCase()];
+  const showImage = active && Boolean(src) && (enabled || retained);
 
   useEffect(() => {
-    if (enabled) setActivated(true);
-  }, [enabled]);
+    if (!active || !src) {
+      setRetained(false);
+
+      return;
+    }
+    if (enabled) {
+      setRetained(true);
+
+      return;
+    }
+    // Keep the actual pixels for the closing fade, then release the HDR image.
+    const timer = setTimeout(() => setRetained(false), 650);
+
+    return () => clearTimeout(timer);
+  }, [enabled, active, src]);
 
   useEffect(() => {
     let active = true;
     const frames = new Set<number>();
+    const controller = new AbortController();
 
     setReady(false);
-    if (!activated) return;
+    if (!showImage || !image.current) return;
 
-    // Decode the real image nodes, then allow two paint frames before hiding
-    // the vector fallback. One native HDR atlas is shared by every edge label.
+    // One small whole-label native image, with a bounded decode queue.
     const paint = (callback: () => void) => {
       const id = requestAnimationFrame(() => {
         frames.delete(id);
@@ -38,9 +83,8 @@ export default function FilmEdgeMark({ text }: { text: string }) {
       frames.add(id);
     };
 
-    void Promise.all(
-      [...images.current.values()].map((image) => image.decode()),
-    )
+    // Finish the tiny light-up labels before background photo downloads.
+    void decodePhotoElement(image.current, 3, controller.signal)
       .then(() => {
         if (active) paint(() => paint(() => setReady(true)));
       })
@@ -48,69 +92,32 @@ export default function FilmEdgeMark({ text }: { text: string }) {
 
     return () => {
       active = false;
+      controller.abort();
       frames.forEach(cancelAnimationFrame);
     };
-  }, [activated, text]);
+  }, [showImage, src]);
 
   return (
     <span
       aria-hidden="true"
       className="film-edge-label"
-      data-edge-hdr-ready={enabled && ready}
+      data-edge-hdr-ready={active && enabled && ready}
       data-edge-text={text}
       style={{ aspectRatio: `${Math.max(1, letters.length * 6 - 1)} / 7` }}
     >
-      <svg
-        aria-hidden="true"
-        className="film-edge-dots"
-        fill="currentColor"
-        viewBox={`0 0 ${Math.max(1, letters.length * 6 - 1)} 7`}
-      >
-        {letters.map((letter, index) =>
-          (filmGlyphs[letter] ?? []).flatMap((row, y) =>
-            [...row].map((dot, x) =>
-              dot === "1" ? (
-                <circle
-                  key={`${index}-${x}-${y}`}
-                  cx={index * 6 + x + 0.5}
-                  cy={y + 0.5}
-                  r={0.42}
-                />
-              ) : null,
-            ),
-          ),
-        )}
-      </svg>
-      {enabled || activated ? (
-        <span className="film-edge-hdr">
-          {letters.map((letter, index) => {
-            const glyph = FILM_GLYPH_ORDER.indexOf(letter);
-
-            return (
-              <span key={index} className="film-edge-hdr-cell">
-                {glyph >= 0 ? (
-                  <img
-                    ref={(image) => {
-                      if (image) images.current.set(index, image);
-                      else images.current.delete(index);
-                    }}
-                    alt=""
-                    data-hdr-active="true"
-                    decoding="async"
-                    draggable={false}
-                    src={FILM_EDGE_HDR_SRC}
-                    style={{
-                      width: `${((FILM_GLYPH_COLUMNS * 6) / 5) * 100}%`,
-                      height: `${((FILM_GLYPH_ROWS * 8) / 7) * 100}%`,
-                      left: `${((-(glyph % FILM_GLYPH_COLUMNS) * 6) / 5) * 100}%`,
-                      top: `${((-Math.floor(glyph / FILM_GLYPH_COLUMNS) * 8) / 7) * 100}%`,
-                    }}
-                  />
-                ) : null}
-              </span>
-            );
-          })}
-        </span>
+      <EdgeDots text={text} />
+      {showImage ? (
+        <img
+          ref={image}
+          alt=""
+          className="film-edge-hdr"
+          data-hdr-active="true"
+          decoding="async"
+          draggable={false}
+          height={112}
+          src={src}
+          width={letters.length * 96 - 16}
+        />
       ) : null}
     </span>
   );

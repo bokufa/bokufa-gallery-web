@@ -3,6 +3,7 @@ import type { Key } from "react";
 import { TbMap, TbPhotoPin } from "react-icons/tb";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../contexts/LanguageContext";
+import FloatingControls, { floatingControlSurface } from "./FloatingControls";
 
 export type MapView = "regions" | "photos";
 
@@ -25,9 +26,7 @@ export default function MapViewSwitcher({ view, isHidden = false }: MapViewSwitc
   };
 
   return (
-    <div className={`pointer-events-none absolute inset-x-0 bottom-[calc(1.5rem+env(safe-area-inset-bottom))] z-30 flex justify-center transition-[opacity,visibility] duration-300 ${
-      isHidden ? "invisible opacity-0" : "visible opacity-100"
-    }`}>
+    <FloatingControls isHidden={isHidden}>
       <Tabs
         aria-label={t("map.view")}
         selectedKey={view}
@@ -36,7 +35,7 @@ export default function MapViewSwitcher({ view, isHidden = false }: MapViewSwitc
         radius="lg"
         classNames={{
           base: isHidden ? "pointer-events-none" : "pointer-events-auto",
-          tabList: "bg-content1/80 shadow-medium backdrop-blur-md",
+          tabList: floatingControlSurface,
         }}
       >
         <Tab
@@ -58,6 +57,6 @@ export default function MapViewSwitcher({ view, isHidden = false }: MapViewSwitc
           )}
         />
       </Tabs>
-    </div>
+    </FloatingControls>
   );
 }

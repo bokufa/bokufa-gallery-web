@@ -1,0 +1,90 @@
+{
+  "unit": 16,
+  "hdrBoost": 4,
+  "labels": [
+    {
+      "text": "FUJI",
+      "imageUrl": "/film-edge/labels/fuji-v1.jpg",
+      "width": 368,
+      "height": 112,
+      "bytes": 16509,
+      "sha256": "392dded1c0e331184920841133d6c89a62fbec674551da3494512bbe513185ff",
+      "appleHdrDecodeVerified": true,
+      "hdrPeakLuminance": 2.732267141342163,
+      "headroom": 4,
+      "sdrPeakLuminance": 0.683066725730896
+    },
+    {
+      "text": "RDP III",
+      "imageUrl": "/film-edge/labels/rdp-iii-v1.jpg",
+      "width": 656,
+      "height": 112,
+      "bytes": 26711,
+      "sha256": "6f603c617aa1ca26241fcd8f785cca207021794bbe51a9457f1056cfeda0fb35",
+      "appleHdrDecodeVerified": true,
+      "hdrPeakLuminance": 2.732267141342163,
+      "headroom": 4,
+      "sdrPeakLuminance": 0.683066725730896
+    },
+    {
+      "text": "▶ RDP III",
+      "imageUrl": "/film-edge/labels/arrow-rdp-iii-v1.jpg",
+      "width": 848,
+      "height": 112,
+      "bytes": 31962,
+      "sha256": "ba780523f510d3b15f2d4a3836498a7e626119d5dddfe8a9eb10c3a10c8a078f",
+      "appleHdrDecodeVerified": true,
+      "hdrPeakLuminance": 2.732267141342163,
+      "headroom": 4,
+      "sdrPeakLuminance": 0.683066725730896
+    },
+    {
+      "text": "FUJICOLOR C200",
+      "imageUrl": "/film-edge/labels/fujicolor-c200-v1.jpg",
+      "width": 1328,
+      "height": 112,
+      "bytes": 51530,
+      "sha256": "4a85aa540586c65171e57d7cdf48e304739ab0d2cf566f2c2751fbee58b5fdb2",
+      "appleHdrDecodeVerified": true,
+      "hdrPeakLuminance": 2.732267141342163,
+      "headroom": 4,
+      "sdrPeakLuminance": 0.683066725730896
+    },
+    {
+      "text": "▶ FUJICOLOR C200",
+      "imageUrl": "/film-edge/labels/arrow-fujicolor-c200-v1.jpg",
+      "width": 1520,
+      "height": 112,
+      "bytes": 56828,
+      "sha256": "6239a1602662d98b332113545e34a0331c3281fe740a23bdd4c698e19f877f6f",
+      "appleHdrDecodeVerified": true,
+      "hdrPeakLuminance": 2.732267141342163,
+      "headroom": 4,
+      "sdrPeakLuminance": 0.683066725730896
+    },
+    {
+      "text": "FILM",
+      "imageUrl": "/film-edge/labels/film-v1.jpg",
+      "width": 368,
+      "height": 112,
+      "bytes": 17137,
+      "sha256": "b6d90ef9a302eb758c8352d70f5433e75cbed0237e11b0c52e456f0dc6e4520d",
+      "appleHdrDecodeVerified": true,
+      "hdrPeakLuminance": 2.732267141342163,
+      "headroom": 4,
+      "sdrPeakLuminance": 0.683066725730896
+    },
+    {
+      "text": "▶ FILM",
+      "imageUrl": "/film-edge/labels/arrow-film-v1.jpg",
+      "width": 560,
+      "height": 112,
+      "bytes": 22393,
+      "sha256": "9e5f86b8797a285e061f680e7755ee144198c0f1337bcea8b8428049ffa8a80a",
+      "appleHdrDecodeVerified": true,
+      "hdrPeakLuminance": 2.732267141342163,
+      "headroom": 4,
+      "sdrPeakLuminance": 0.683066725730896
+    }
+  ]
+}

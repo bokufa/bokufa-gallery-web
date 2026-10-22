@@ -1,10 +1,12 @@
 import type { ImgHTMLAttributes } from "react";
 
 import { useEffect, useRef, useState } from "react";
+import { decodePhotoElement } from "../utils/photoSources";
 
 type Props = ImgHTMLAttributes<HTMLImageElement> & {
   src: string;
   hdrSrc?: string;
+  suspend?: boolean;
 };
 
 // Never fade the base out: the decoded replacement fades over an opaque image.
@@ -12,6 +14,7 @@ type Props = ImgHTMLAttributes<HTMLImageElement> & {
 export default function BufferedPhotoImage({
   src,
   hdrSrc,
+  suspend = false,
   alt = "",
   onLoad,
   className = "",
@@ -29,6 +32,7 @@ export default function BufferedPhotoImage({
     new Map<string, (element: HTMLImageElement | null) => void>(),
   );
   const ready = useRef(new Set<string>());
+  const decodes = useRef(new Map<string, AbortController>());
   const timer = useRef<ReturnType<typeof setTimeout>>();
 
   desired.current = src;
@@ -38,6 +42,8 @@ export default function BufferedPhotoImage({
       bindings.current.set(url, (element) => {
         if (element) elements.current.set(url, element);
         else {
+          decodes.current.get(url)?.abort();
+          decodes.current.delete(url);
           elements.current.delete(url);
           ready.current.delete(url);
         }
@@ -95,19 +101,31 @@ export default function BufferedPhotoImage({
     return () => {
       mounted.current = false;
       clearTimeout(timer.current);
+      decodes.current.forEach((controller) => controller.abort());
+      decodes.current.clear();
       frames.current.forEach(cancelAnimationFrame);
       frames.current.clear();
     };
   }, []);
 
   useEffect(() => {
+    if (suspend) {
+      frames.current.forEach(cancelAnimationFrame);
+      frames.current.clear();
+      clearTimeout(timer.current);
+      if (current.current.base !== src || current.current.incoming)
+        update({ base: src, incoming: "", fading: false });
+      setUrls([src]);
+
+      return;
+    }
     setUrls([
       ...new Set(
         [current.current.base, current.current.incoming, src].filter(Boolean),
       ),
     ]);
     if (ready.current.has(src) && elements.current.has(src)) show(src);
-  }, [src, view.base, view.incoming]);
+  }, [src, view.base, view.incoming, suspend]);
 
   return (
     <span className="buffered-photo" style={style}>
@@ -140,17 +158,27 @@ export default function BufferedPhotoImage({
           onLoad={(event) => {
             const element = event.currentTarget;
 
+            if (!mounted.current || elements.current.get(url) !== element)
+              return;
+            decodes.current.get(url)?.abort();
+            const controller = new AbortController();
+
+            decodes.current.set(url, controller);
+
             // React's event is only forwarded synchronously; decoding owns the node.
             onLoad?.(event);
-            void element
-              .decode()
+            void decodePhotoElement(element, 2, controller.signal)
               .then(() => {
                 if (!mounted.current || elements.current.get(url) !== element)
                   return;
                 ready.current.add(url);
                 show(url);
               })
-              .catch(() => undefined);
+              .catch(() => undefined)
+              .finally(() => {
+                if (decodes.current.get(url) === controller)
+                  decodes.current.delete(url);
+              });
           }}
         />
       ))}

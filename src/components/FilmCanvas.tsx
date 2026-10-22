@@ -21,6 +21,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import FilmLoupe from "./FilmLoupe";
 import HdrToggle from "./HdrToggle";
 import HdrLightPanel from "./HdrLightPanel";
+import FloatingControls, { floatingControlSurface } from "./FloatingControls";
 
 const initialView: CanvasView = { x: 0, y: 0, scale: 1 };
 
@@ -332,50 +333,52 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
           {children}
         </div>
       </div>
-      <div
-        aria-label={t("film.zoom")}
-        className="film-canvas-controls map-glass-panel"
-        role="group"
-        title={t("film.gestures")}
-      >
-        <button
-          aria-label={t("zoom.out")}
-          disabled={scale <= minimumPercent}
-          title={t("zoom.out")}
-          type="button"
-          onClick={() => controlsRef.current("out")}
+      <FloatingControls>
+        <div
+          aria-label={t("film.zoom")}
+          className={`film-canvas-controls pointer-events-auto ${floatingControlSurface}`}
+          role="group"
+          title={t("film.gestures")}
         >
-          <TbMinus size={18} />
-        </button>
-        <span aria-label={t("zoom.scale", { scale })}>{scale}%</span>
-        <button
-          aria-label={t("zoom.in")}
-          disabled={scale >= 300}
-          title={t("zoom.in")}
-          type="button"
-          onClick={() => controlsRef.current("in")}
-        >
-          <TbPlus size={18} />
-        </button>
-        <button
-          aria-label={t("film.reset")}
-          title={t("film.reset")}
-          type="button"
-          onClick={() => controlsRef.current("reset")}
-        >
-          <TbZoomReset size={18} />
-        </button>
-        <button
-          aria-label={t("loupe")}
-          aria-pressed={isLoupeOpen}
-          title={t("loupe")}
-          type="button"
-          onClick={() => setIsLoupeOpen((open) => !open)}
-        >
-          <TbZoomScan size={18} />
-        </button>
-        <HdrToggle />
-      </div>
+          <button
+            aria-label={t("zoom.out")}
+            disabled={scale <= minimumPercent}
+            title={t("zoom.out")}
+            type="button"
+            onClick={() => controlsRef.current("out")}
+          >
+            <TbMinus size={18} />
+          </button>
+          <span aria-label={t("zoom.scale", { scale })}>{scale}%</span>
+          <button
+            aria-label={t("zoom.in")}
+            disabled={scale >= 300}
+            title={t("zoom.in")}
+            type="button"
+            onClick={() => controlsRef.current("in")}
+          >
+            <TbPlus size={18} />
+          </button>
+          <button
+            aria-label={t("film.reset")}
+            title={t("film.reset")}
+            type="button"
+            onClick={() => controlsRef.current("reset")}
+          >
+            <TbZoomReset size={18} />
+          </button>
+          <button
+            aria-label={t("loupe")}
+            aria-pressed={isLoupeOpen}
+            title={t("loupe")}
+            type="button"
+            onClick={() => setIsLoupeOpen((open) => !open)}
+          >
+            <TbZoomScan size={18} />
+          </button>
+          <HdrToggle />
+        </div>
+      </FloatingControls>
       {isLoupeOpen ? (
         <FilmLoupe
           contentRef={contentRef}

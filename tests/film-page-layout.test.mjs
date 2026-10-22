@@ -30,8 +30,25 @@ test("film page receives the LED table and the same floating chrome as the map",
   assert(!styles.includes("scale(1.012)"));
   assert.match(filmPage, /photo\.thumb_file\.url/);
   assert.match(filmPage, /preloadFilmImage\(mediumFile\.url\)/);
-  assert.match(filmPage, /new IntersectionObserver/);
+  assert.match(filmPage, /useFilmVisibility\(frameRef\)/);
+  assert.match(filmPage, /visible && hdrEnabled/);
+  assert.match(filmPage, /suspend=\{!visible\}/);
   assert.match(filmPage, /setPreviewUrl\(mediumFile\.url\)/);
+});
+
+test('map and film controls share the same bottom-center placement and frosted surface', async () => {
+  const shared = await readFile(new URL('../src/components/FloatingControls.tsx', import.meta.url), 'utf8');
+  const map = await readFile(new URL('../src/components/MapViewSwitcher.tsx', import.meta.url), 'utf8');
+  const film = await readFile(new URL('../src/components/FilmCanvas.tsx', import.meta.url), 'utf8');
+  assert.match(shared, /bottom-\[calc\(1\.5rem\+env\(safe-area-inset-bottom\)\)\]/);
+  assert.match(shared, /inset-x-0[^`]*justify-center/);
+  assert.match(shared, /bg-content1\/80 shadow-medium backdrop-blur-md/);
+  assert.match(map, /<FloatingControls/);
+  assert.match(map, /tabList: floatingControlSurface/);
+  assert.match(film, /<FloatingControls>/);
+  assert.match(film, /film-canvas-controls[^`]*floatingControlSurface/);
+  const rule = styles.match(/\.film-canvas-controls\s*\{([^}]+)\}/)?.[1];
+  assert(!/right:|bottom:|box-shadow:|border:/.test(rule), 'film controls must not override the shared map positioning/surface');
 });
 
 test("every film-page visit fades the mounted table, including cached returns and delayed photo loads", () => {

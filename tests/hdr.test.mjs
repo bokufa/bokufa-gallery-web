@@ -12,7 +12,7 @@ async function compile(filename, replacements = {}) {
   return dataUrl(code);
 }
 const sourcesUrl = await compile('../src/utils/photoSources.ts');
-const { sdrPhotoFile, preferredPhotoFile, preloadPhotoSource } = await import(sourcesUrl);
+const { sdrPhotoFile, preferredPhotoFile, preloadPhotoSource, decodePhotoElement } = await import(sourcesUrl);
 const photo = (id = 1) => ({
   id,
   thumb_file: { url: `thumb-${id}`, width: 100, height: 100 },
@@ -57,6 +57,7 @@ test('native decode requests are shared and failed loads can be retried without 
 });
 
 const reactUrl = dataUrl(`
+export const memo = component => component;
 export const useState = value => globalThis.__hdrHarness.useState(value);
 export const useEffect = (effect, deps) => globalThis.__hdrHarness.useEffect(effect, deps);
 export const useRef = initial => globalThis.__hdrHarness.useRef(initial);
@@ -171,7 +172,7 @@ test('controlled single-photo toggle cannot write the background table preferenc
 });
 
 const { default: BufferedPhotoImage } = await import(await compile('../src/components/BufferedPhotoImage.tsx', {
-  react: reactUrl, 'react/jsx-runtime': jsxUrl,
+  react: reactUrl, 'react/jsx-runtime': jsxUrl, '../utils/photoSources': sourcesUrl,
 }));
 function bufferedFixture(t) {
   const render = harness(t, BufferedPhotoImage);
@@ -203,8 +204,8 @@ function bufferedFixture(t) {
       child.props.ref(nodes.get(child.key));
     }
   };
-  const draw = (src = props.src) => {
-    props = { ...props, src };
+  const draw = (src = props.src, extra = {}) => {
+    props = { ...props, ...extra, src };
     // Flush the synchronous effect state changes just as React does.
     for (let i = 0; i < 3; i++) { tree = render(props); commit(tree); }
     return tree;
@@ -283,6 +284,18 @@ test('failed or stale replacement decodes cannot hide the visible base', async t
   assert.equal(f.layer('hdr-dom'), undefined, 'an old request cannot activate after opt-out');
 });
 
+test('leaving the viewport aborts a running dissolve and immediately releases the old HDR DOM layer', async t => {
+  const f = bufferedFixture(t);
+  await f.load('sdr-dom');
+  f.draw('hdr-dom'); await f.load('hdr-dom');
+  f.paint(); f.draw(); f.paint(); f.draw();
+  const tree = f.draw('sdr-dom', { suspend: true });
+  assert.deepEqual(tree.props.children.map(layer => layer.key), ['sdr-dom']);
+  assert.equal(f.layer('sdr-dom').props.style.opacity, 1);
+  f.paint(); f.draw();
+  assert.equal(f.layer('hdr-dom'), undefined);
+});
+
 const { default: HdrLightPanel } = await import(await compile('../src/components/HdrLightPanel.tsx', {
   react: reactUrl, 'react/jsx-runtime': jsxUrl, '../contexts/HdrContext': contextUrl,
   '../utils/hdrLight': dataUrl('export const mountHdrLight = (...args) => globalThis.__mountLight(...args);'),
@@ -316,9 +329,10 @@ test('LED opt-out retains the rendered surface for its fade; toggling back does 
 
 const { default: FilmEdgeMark } = await import(await compile('../src/components/FilmEdgeMark.tsx', {
   react: reactUrl, 'react/jsx-runtime': jsxUrl, '../contexts/HdrContext': contextUrl,
+  '../utils/photoSources': sourcesUrl,
   '../utils/filmGlyphs': await compile('../src/utils/filmGlyphs.ts'),
 }));
-test('decoded HDR edge nodes survive opt-out and are ready for every reverse light fade', async t => {
+test('one decoded HDR edge image survives a reverse fade but is released when offscreen', async t => {
   const globals = new Map();
   const frames = new Map();
   let id = 0;
@@ -327,27 +341,100 @@ test('decoded HDR edge nodes survive opt-out and are ready for every reverse lig
     cancelAnimationFrame: id => frames.delete(id),
   })) { globals.set(name, globalThis[name]); globalThis[name] = value; }
   globalThis.__hdrTable = { enabled: false };
-  const render = harness(t, FilmEdgeMark);
+  let decodes = 0;
+  const node = { decode: () => { decodes++; return Promise.resolve(); } };
+  const render = harness(t, props => {
+    const tree = FilmEdgeMark(props);
+    const image = tree.props.children[1];
+    if (image) image.props.ref.current = node;
+    return tree;
+  });
   t.after(() => { for (const [name, value] of globals) globalThis[name] = value; delete globalThis.__hdrTable; });
   const paint = () => { const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(fn => fn()); };
-  let decodes = 0;
   let tree = render({ text: 'FUJI' });
   assert.equal(tree.props.children[1], null);
   globalThis.__hdrTable.enabled = true;
   tree = render({ text: 'FUJI' });
-  const nodes = tree.props.children[1].props.children.map(cell => ({ image: cell.props.children, node: { decode: () => { decodes++; return Promise.resolve(); } } }));
-  nodes.forEach(({image, node}) => image.props.ref(node));
   tree = render({ text: 'FUJI' });
   assert.equal(tree.props['data-edge-hdr-ready'], false);
   await tick(); paint(); paint(); tree = render({ text: 'FUJI' });
   assert.equal(tree.props['data-edge-hdr-ready'], true);
-  assert.equal(decodes, 4);
+  assert.equal(decodes, 1);
   globalThis.__hdrTable.enabled = false;
   tree = render({ text: 'FUJI' });
   assert.equal(tree.props['data-edge-hdr-ready'], false);
-  assert.equal(tree.props.children[1].props.children.length, 4, 'closing fade retains the atlas nodes');
+  assert.equal(tree.props.children[1].type, 'img', 'closing fade retains the one native label');
   globalThis.__hdrTable.enabled = true;
   tree = render({ text: 'FUJI' });
   assert.equal(tree.props['data-edge-hdr-ready'], true);
-  assert.equal(decodes, 4, 'repeated switches do not decode again or recreate glyphs');
+  assert.equal(decodes, 1, 'quick reverse switches reuse the decoded native label');
+  tree = render({ text: 'FUJI', active: false });
+  assert.equal(tree.props.children[1], null, 'offscreen labels must release HDR textures');
+  assert.equal(tree.props['data-edge-hdr-ready'], false);
+});
+
+test('native DOM decodes share the photo queue instead of starting an unbounded second wave', async t => {
+  const requests = mockImages(t);
+  const first = preloadPhotoSource('serial-label-budget');
+  let starts = 0;
+  const dom = decodePhotoElement({ decode() { starts++; return Promise.resolve(); } }, 0);
+  assert.equal(starts, 0, 'DOM work waits while a photo is decoding');
+  requests[0].resolve();
+  await first; await dom;
+  assert.equal(starts, 1);
+});
+
+test('offscreen queued DOM images are cancelled before native decoding starts', async t => {
+  const requests = mockImages(t);
+  const first = preloadPhotoSource('cancelled-label-budget');
+  const controller = new AbortController();
+  let starts = 0;
+  const pending = decodePhotoElement({ decode() { starts++; return Promise.resolve(); } }, 0, controller.signal);
+  controller.abort();
+  await assert.rejects(pending, { name: 'AbortError' });
+  requests[0].resolve(); await first; await tick();
+  assert.equal(starts, 0);
+  await decodePhotoElement({ decode() { starts++; return Promise.resolve(); } });
+  assert.equal(starts, 1, 'cancellation must not lock the decode queue');
+});
+
+test('a DOM decode failure cannot freeze later image jobs', async () => {
+  const first = decodePhotoElement({ decode() { throw new Error('invalid image'); } });
+  let completed = false;
+  const next = decodePhotoElement({ decode() { completed = true; return Promise.resolve(); } });
+  await assert.rejects(first, /invalid image/);
+  await next;
+  assert.equal(completed, true);
+});
+
+const { default: useFilmVisibility } = await import(await compile('../src/hooks/useFilmVisibility.ts', { react: reactUrl }));
+test('film visibility keeps observing pan/zoom and cleans up on route exit', t => {
+  let callback;
+  let observed;
+  let options;
+  let stopped = 0;
+  const previousWindow = globalThis.window;
+  const previousObserver = globalThis.IntersectionObserver;
+  const Observer = class {
+    constructor(fn, config) { callback = fn; options = config; }
+    observe(element) { observed = element; }
+    disconnect() { stopped++; }
+  };
+  globalThis.IntersectionObserver = Observer;
+  globalThis.window = { IntersectionObserver: Observer };
+  const render = harness(t, useFilmVisibility);
+  t.after(() => { globalThis.window = previousWindow; globalThis.IntersectionObserver = previousObserver; });
+  const viewport = {};
+  const ref = { current: { closest: () => viewport } };
+  assert.equal(render(ref), false);
+  assert.equal(observed, ref.current);
+  assert.equal(options.root, viewport);
+  assert.equal(options.rootMargin, '0px');
+  callback([{ isIntersecting: true }]);
+  assert.equal(render(ref), true);
+  callback([{ isIntersecting: false }]);
+  assert.equal(render(ref), false);
+  callback([{ isIntersecting: true }]);
+  assert.equal(render(ref), true);
+  assert.equal(stopped, 0, 'do not disconnect after the first intersection');
 });

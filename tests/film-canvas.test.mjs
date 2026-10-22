@@ -185,6 +185,7 @@ test("canvas gestures suppress drag clicks, preserve normal clicks, support pinc
       .replace('"./FilmLoupe"', JSON.stringify(dataUrl("export default function FilmLoupe() { return null; }")))
       .replace('"./HdrToggle"', JSON.stringify(dataUrl("export default function HdrToggle() { return null; }")))
       .replace('"./HdrLightPanel"', JSON.stringify(dataUrl("export default function HdrLightPanel() { return null; }")))
+      .replace('"./FloatingControls"', JSON.stringify(dataUrl("export const floatingControlSurface = ''; export default function FloatingControls() { return null; }")))
       .replace('"../contexts/HdrContext"', JSON.stringify(dataUrl("export const useHdr = () => ({ enabled: false });")))
       .replace('"../contexts/LanguageContext"', JSON.stringify(dataUrl("export const useLanguage = () => ({ t: key => key === 'film.zoom' ? '胶片缩放' : key });")))
       .replace('"../utils/filmScale"', JSON.stringify(dataUrl(scaleModule)))
@@ -211,7 +212,7 @@ test("canvas gestures suppress drag clicks, preserve normal clicks, support pinc
     emit("pointerup", { pointerId: 2 });
     emit("pointerup");
 
-    const controls = tree.props.children.find(child => child?.props?.['aria-label'] === '胶片缩放').props.children;
+    const controls = tree.props.children.flatMap(child => [child, child?.props?.children]).find(child => child?.props?.['aria-label'] === '胶片缩放').props.children;
     controls[3].props.onClick();
     for (const callback of frames.values()) callback();
     frames.clear();

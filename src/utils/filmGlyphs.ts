@@ -47,3 +47,15 @@ export const FILM_GLYPH_ROWS = Math.ceil(
   FILM_GLYPH_ORDER.length / FILM_GLYPH_COLUMNS,
 );
 export const FILM_EDGE_HDR_SRC = "/film-edge/glyphs-hdr-iso-v0.jpg";
+
+// Whole-label HDR images avoid compositing a full atlas for every character.
+// Unknown stocks keep their accurate vector text rather than showing wrong ink.
+export const FILM_EDGE_HDR_LABELS: Record<string, string> = {
+  FUJI: "/film-edge/labels/fuji-v1.jpg",
+  "RDP III": "/film-edge/labels/rdp-iii-v1.jpg",
+  "▶ RDP III": "/film-edge/labels/arrow-rdp-iii-v1.jpg",
+  "FUJICOLOR C200": "/film-edge/labels/fujicolor-c200-v1.jpg",
+  "▶ FUJICOLOR C200": "/film-edge/labels/arrow-fujicolor-c200-v1.jpg",
+  FILM: "/film-edge/labels/film-v1.jpg",
+  "▶ FILM": "/film-edge/labels/arrow-film-v1.jpg",
+};

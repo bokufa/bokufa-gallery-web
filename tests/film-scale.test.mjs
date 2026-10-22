@@ -9,13 +9,13 @@ const compiled = ts.transpileModule(source, {
 }).outputText;
 const { filmSceneWidth, FILM_PIXELS_PER_MM } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`);
 
-test("the new 100% baseline enlarges both film formats by exactly 1.5", () => {
+test("the new 100% baseline is exactly 65% of the previous size for both film formats", () => {
   for (const dimension of [61.5, 56, 38, 35, 36, 24]) {
-    assert(Math.abs(dimension * FILM_PIXELS_PER_MM / (dimension * 5.02) - 1.5) < 1e-12);
+    assert(Math.abs(dimension * FILM_PIXELS_PER_MM / (dimension * 5.02 * 1.5) - 0.65) < 1e-12);
   }
 });
 
-test("the fixed scene still fits four 120 frames at the larger baseline", () => {
+test("the scene fits four 120 frames at the compact baseline", () => {
   const needed = 2 * 100 + 4 * 61.5 * FILM_PIXELS_PER_MM + 3 * 20;
 
   assert.equal(filmSceneWidth(), needed + 1);
