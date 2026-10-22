@@ -10,7 +10,6 @@ import {
   isCanceledBlogRequest,
 } from "../services/blog";
 import { formatShortDate } from "../utils/date";
-import { nativeLocationText } from "../utils/placeNames";
 import { useLanguage } from "../contexts/LanguageContext";
 
 export default function BlogIndex() {
@@ -85,7 +84,7 @@ export default function BlogIndex() {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <IoLocationOutline size={16} />
-                  {nativeLocationText(post.location)}
+                  {post.location}
                 </span>
             </div>
             <div className="mt-3 flex items-baseline justify-between gap-5">

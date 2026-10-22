@@ -20,7 +20,7 @@ Main code from https://github.com/hebingchang/boar-gallery-web
 202610 add film page
 202610 add HDR support in film view and photo details
 202610 add loupe and HDR light-table background
-202610 use local place names in photo details and maps
+202610 store local place names during photo upload and use them in details and maps
 202610 add Chinese, Japanese and English interface switching
 202610 soften light-table brightness and add transparent 135 perforations
 202610 render warm film edge lettering with native HDR gain maps

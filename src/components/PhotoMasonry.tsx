@@ -1,6 +1,5 @@
 import { Button, Card, CardBody, CardFooter, Spinner, useDisclosure } from "@heroui/react";
 import { useWindowSize } from "@react-hook/window-size";
-import { nativeCityName, nativeCountryName, nativePrefectureName } from "../utils/placeNames";
 import {
   useContainerPosition,
   useInfiniteLoader,
@@ -295,8 +294,8 @@ const MasonryCard = memo(function MasonryCard({
       </CardBody>
       {data.metadata.city ? (
         <CardFooter className="flex-wrap justify-between text-small">
-          <b>{`${nativePrefectureName(data.metadata.city.prefecture)} ${nativeCityName(data.metadata.city)}`}</b>
-          <p className="text-default-500">{nativeCountryName(data.metadata.city.prefecture.country)}</p>
+          <b>{`${data.metadata.city.prefecture.name} ${data.metadata.city.name}`}</b>
+          <p className="text-default-500">{data.metadata.city.prefecture.country.name}</p>
         </CardFooter>
       ) : null}
     </Card>

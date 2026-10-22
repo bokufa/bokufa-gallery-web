@@ -2,7 +2,6 @@ import { Photo } from "../models/gallery.ts";
 import { Modal, ModalContent, ModalHeader, ModalBody, Spacer } from "@heroui/react";
 import { useEffect, useMemo, useState } from "react";
 import { fetchPhoto } from "../services/photos";
-import { nativeCityName, nativeCountryName, nativePrefectureName } from "../utils/placeNames";
 import useMediaQuery from "../hooks/useMediaQuery.tsx";
 import PhotoImageCard from "./PhotoImageCard";
 import PhotoLocationInfo from "./PhotoLocationInfo";
@@ -38,7 +37,7 @@ export default function PhotoModal(props: PhotoModalProps) {
 	const isPortrait = photo.thumb_file.width <= photo.thumb_file.height;
 	const cityLinks = useMemo(() => (
 		<div className='flex gap-1 font-bold text-foreground'>
-			{photo.metadata.city ? [nativeCountryName(photo.metadata.city.prefecture.country), nativePrefectureName(photo.metadata.city.prefecture), nativeCityName(photo.metadata.city)].join(" ") : ""}
+			{photo.metadata.city ? [photo.metadata.city.prefecture.country.name, photo.metadata.city.prefecture.name, photo.metadata.city.name].join(" ") : ""}
 		</div>
 	), [
 		photo.metadata.city?.id,

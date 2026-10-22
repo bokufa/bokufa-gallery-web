@@ -2,7 +2,6 @@ import { IoLocationOutline } from "react-icons/io5";
 import { Link } from "@heroui/react";
 import { Photo } from "../models/gallery";
 import { ReactNode } from "react";
-import { countryCodeFor, nativePlaceName } from "../utils/placeNames";
 
 export default function PhotoLocationInfo({ photo, cityLinks }: { photo: Photo, cityLinks: ReactNode }) {
   if (!photo.metadata.city) return null;
@@ -13,7 +12,7 @@ export default function PhotoLocationInfo({ photo, cityLinks }: { photo: Photo, 
         {cityLinks}
         {photo.metadata.place ? (
           <div className='flex items-center'>
-            <Link color='foreground'>{nativePlaceName(photo.metadata.place, countryCodeFor(photo.metadata.city.prefecture.country), "place")}</Link>
+            <Link color='foreground'>{photo.metadata.place.name}</Link>
           </div>
         ) : null}
       </div>

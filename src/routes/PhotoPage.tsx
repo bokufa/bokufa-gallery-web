@@ -13,7 +13,6 @@ import useMediaQuery from "../hooks/useMediaQuery";
 import type { Photo } from "../models/gallery";
 import { fetchPhoto, isCanceledPhotoRequest } from "../services/photos";
 import { isFilmPhoto } from "../utils/film";
-import { nativeCityName, nativeCountryName, nativePrefectureName } from "../utils/placeNames";
 import { useLanguage } from "../contexts/LanguageContext";
 
 type LoadState = "loading" | "ready" | "error" | "not-found";
@@ -55,7 +54,7 @@ export default function PhotoPage() {
     if (!city) return null;
     return (
       <div className="flex gap-1 font-bold text-foreground">
-        {nativeCountryName(city.prefecture.country)} {nativePrefectureName(city.prefecture)} {nativeCityName(city)}
+        {city.prefecture.country.name} {city.prefecture.name} {city.name}
       </div>
     );
   }, [photo]);

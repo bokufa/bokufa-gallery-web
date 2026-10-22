@@ -7,7 +7,6 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import PhotoMasonry from "../components/PhotoMasonry";
 import type { Photo } from "../models/gallery";
 import { fetchPhotos } from "../services/photos";
-import { countryCodeFor, localPlaceLocale, nativeCityName, nativePrefectureName } from "../utils/placeNames";
 import { useLanguage } from "../contexts/LanguageContext";
 
 interface PrefectureLocationState {
@@ -42,19 +41,16 @@ export default function PrefecturePage() {
       const existing = byId.get(city.id);
       byId.set(city.id, {
         id: city.id,
-        name: nativeCityName(city),
+        name: city.name,
         photos_count: (existing?.photos_count || 0) + 1,
       });
     }
-    const code = countryCodeFor(regionPhotos?.[0]?.metadata.city?.prefecture.country);
-    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, localPlaceLocale(code)));
+    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [regionPhotos]);
 
   if (!prefectureId || !regionPhotos) return null;
   const region = regionPhotos[0]?.metadata.city?.prefecture;
-  const prefectureName = region
-    ? nativePrefectureName({ ...region, name: routeState?.prefectureName || region.name })
-    : routeState?.prefectureName || t("map.regions");
+  const prefectureName = routeState?.prefectureName || region?.name || t("map.regions");
   const areas = [
     { id: 0, name: t("map.allAreas", { region: prefectureName }), photos_count: regionPhotos.length },
     ...cities,

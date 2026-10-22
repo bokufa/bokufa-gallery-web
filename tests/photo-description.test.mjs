@@ -34,7 +34,6 @@ const imports = {
   '../hooks/useMediaQuery': dataUrl('export default () => true;'),
   '../services/photos': dataUrl('export const fetchPhoto = () => {}; export const isCanceledPhotoRequest = () => false;'),
   '../utils/film': await compile('../src/utils/film.ts'),
-  '../utils/placeNames': dataUrl('export const nativeCityName = value => value.name; export const nativeCountryName = value => value.name; export const nativePrefectureName = value => value.name;'),
   '../contexts/LanguageContext': dataUrl('export const useLanguage = () => ({ t: key => key });'),
 };
 for (const name of ['PhotoDateInfo', 'PhotoImageCard', 'PhotoLocationInfo', 'PhotoMapCard', 'PhotoMetaCard', 'PhotoTitle'])

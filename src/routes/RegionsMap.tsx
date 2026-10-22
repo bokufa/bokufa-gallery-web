@@ -15,13 +15,11 @@ import Feature, { FeatureLike } from "ol/Feature";
 import { Select, SelectItem, Spinner } from "@heroui/react";
 import { TbPhoto } from "react-icons/tb";
 import { MAP_COUNTRIES, mapCountryForCode, photoBelongsToCountry } from "../data/mapCountries";
-import { localPlaceLocale, nativePlaceName } from "../utils/placeNames";
 import { useLanguage } from "../contexts/LanguageContext";
 import './map_openlayers.css';
 import 'ol/ol.css';
 
-interface LocalizedPrefecture extends Prefecture {
-  i18n: Record<string, string>;
+interface MapPrefecture extends Prefecture {
   apiId?: number;
 }
 
@@ -30,14 +28,6 @@ interface RegionsMapProps {
   overlayActive: boolean;
   onRegionSelect: (prefectureId: number, prefectureName: string) => void;
   onBack: () => void;
-}
-
-function geoName(
-  entity: { name: string; i18n?: Record<string, string> },
-  _locale: string,
-  context: { countryCode: string; level: "country" | "prefecture" },
-) {
-  return nativePlaceName(entity, context.countryCode, context.level);
 }
 
 // ---------------------------------------------------------------------------
@@ -241,11 +231,8 @@ interface StyleShell {
 
 const styleShells = new WeakMap<object, StyleShell>()
 
-function featureName(feature: FeatureLike, locale: string, countryCode: string): string {
-  return geoName({
-    name: feature.get('name') as string,
-    i18n: feature.get('i18n') as Record<string, string>,
-  }, locale, { countryCode, level: "prefecture" })
+function featureName(feature: FeatureLike): string {
+  return feature.get('name') as string
 }
 
 function shellFor(feature: FeatureLike, geometry: MultiPolygon): StyleShell {
@@ -323,7 +310,7 @@ export default function RegionsMap({ photos, overlayActive, onRegionSelect, onBa
     new URLSearchParams(window.location.search).get('country'),
   ))
   const countries = MAP_COUNTRIES
-  const [prefectures, setPrefectures] = useState<LocalizedPrefecture[]>([])
+  const [prefectures, setPrefectures] = useState<MapPrefecture[]>([])
   const [ticket, setTicket] = useState<TicketInfo | null>(null)
   const lastTicket = useRef<TicketInfo | null>(null)
   const theme = useRef<{ palette: MapPalette, dark: boolean }>({ palette: FALLBACK_PALETTE, dark: false })
@@ -375,10 +362,9 @@ export default function RegionsMap({ photos, overlayActive, onRegionSelect, onBa
     setTicket(null)
   }, [darkmode.value, resolveTheme])
 
-  // Place labels follow their country, while interface controls stay Chinese.
-  const mapLang = localPlaceLocale(country.code)
-  const countryName = (value: Country) =>
-    geoName(value, mapLang, { countryCode: value.code, level: "country" })
+  // Japanese labels need a Japanese font stack; all other configured maps use Latin scripts.
+  const mapLang = country.code === 'JPN' ? 'ja' : 'en'
+  const countryName = (value: Country) => value.name
   const langRef = useRef(mapLang)
   useEffect(() => {
     langRef.current = mapLang
@@ -433,14 +419,13 @@ export default function RegionsMap({ photos, overlayActive, onRegionSelect, onBa
         if (!response.ok) throw new Error(`GeoJSON ${country.code} 加载失败`)
         return response.json()
       })
-      .then((collection: { features: Array<{ properties: { id: number; name: string; i18n: Record<string, string> } }> }) => {
+      .then((collection: { features: Array<{ properties: { id: number; name: string } }> }) => {
         if (cancelled) return
         setPrefectures(collection.features.map(({ properties }) => {
           const photoData = photoDataById.get(properties.id) ?? photoDataByName.get(properties.name)
           return {
             id: properties.id,
             name: properties.name,
-            i18n: properties.i18n,
             apiId: photoData?.id,
             country,
             photos_count: photoData?.count ?? 0,
@@ -602,7 +587,7 @@ export default function RegionsMap({ photos, overlayActive, onRegionSelect, onBa
         const entryScale = entryActive
           ? Math.min(1, restingResolution / resolution)
           : 1
-        const name = featureName(feature, langRef.current, country.code)
+        const name = featureName(feature)
         const font = labelFont(entryActive ? restingResolution : resolution)
         shell.probeText.setText(name)
         shell.probeText.setFont(font)
@@ -1134,16 +1119,13 @@ export default function RegionsMap({ photos, overlayActive, onRegionSelect, onBa
         const feature = featureAt(e.pixel)
         if (!feature || navTimer) return
         const id = feature.get('id') as number
-        const selectedPrefecture = prefById[id] as LocalizedPrefecture | undefined
+        const selectedPrefecture = prefById[id] as MapPrefecture | undefined
         if (!selectedPrefecture?.apiId) return
 
         const finishSelection = () => {
           selectRef.current(
             selectedPrefecture.apiId!,
-            geoName(selectedPrefecture, mapLang, {
-              countryCode: country.code,
-              level: "prefecture",
-            }),
+            selectedPrefecture.name,
           )
         }
         if (reduceMotion) {
@@ -1278,10 +1260,7 @@ export default function RegionsMap({ photos, overlayActive, onRegionSelect, onBa
               <i className='map-tip-swatch' style={shownTicket ? { background: shownTicket.color } : undefined}/>
               <span className='map-tip-name'>
                 {shownPrefecture
-                  ? geoName(shownPrefecture, mapLang, {
-                    countryCode: country.code,
-                    level: "prefecture",
-                  })
+                  ? shownPrefecture.name
                   : ""}
               </span>
               <span className={`map-tip-count${(shownTicket?.count ?? 0) > 0 ? '' : ' is-zero'}`}>

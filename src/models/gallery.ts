@@ -81,13 +81,7 @@ export interface Manufacture {
   name: string
 }
 
-export interface NativePlaceLabel {
-  name_local?: string
-  native_name?: string
-  i18n?: Record<string, string>
-}
-
-export interface Place extends NativePlaceLabel {
+export interface Place {
   id: number
   name: string
   geom: Coordinate
@@ -109,14 +103,14 @@ export interface Lens {
   min_f_number_in_max_focal_length: number
 }
 
-export interface City extends NativePlaceLabel {
+export interface City {
   id: number
   name: string
   prefecture: Prefecture
   photos_count: number
 }
 
-export interface Prefecture extends NativePlaceLabel {
+export interface Prefecture {
   id: number
   name: string
   country: Country
@@ -124,7 +118,7 @@ export interface Prefecture extends NativePlaceLabel {
   cities: City[]
 }
 
-export interface Country extends NativePlaceLabel {
+export interface Country {
   id: number
   name: string
   code: string

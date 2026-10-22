@@ -15,7 +15,6 @@ import {
   isCanceledBlogRequest,
 } from "../services/blog";
 import { formatShortDate } from "../utils/date";
-import { nativeLocationText } from "../utils/placeNames";
 import { useLanguage } from "../contexts/LanguageContext";
 
 const markdownComponents: Components = {
@@ -217,7 +216,7 @@ export default function BlogPost() {
           </span>
           <span className="flex items-center gap-1.5">
             <IoLocationOutline size={17} />
-            {nativeLocationText(post.location)}
+            {post.location}
           </span>
         </div>
         <div className="mt-4 flex items-baseline justify-between gap-6">
