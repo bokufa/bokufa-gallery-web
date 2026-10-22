@@ -431,6 +431,84 @@
   visibility: visible;
 }
 
+/* Mobile WebKit flattens gain-map images inside the transformed contact sheet
+   to SDR. Supported labels are mirrored into this untransformed screen-space
+   layer; the source SVG remains the fallback until its mirror is ready. */
+.film-canvas-content
+  .film-edge-label[data-edge-screen-managed="true"]
+  > .film-edge-dots,
+.film-canvas-content
+  .film-edge-label[data-edge-screen-managed="true"]
+  > .film-edge-hdr-layout {
+  visibility: hidden;
+}
+
+.film-edge-screen-overlay {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.film-edge-screen-label {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+.film-edge-screen-ink {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.film-edge-screen-label.is-vertical .film-edge-screen-ink {
+  left: 50%;
+  top: 50%;
+  width: var(--edge-screen-height);
+  height: var(--edge-screen-width);
+  transform: translate(-50%, -50%) rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.film-edge-screen-hdr,
+.film-edge-screen-vector {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.film-edge-screen-hdr {
+  object-fit: fill;
+  visibility: hidden;
+  dynamic-range-limit: no-limit;
+}
+
+.film-edge-screen-vector {
+  z-index: 1;
+  color: #feb51e;
+  overflow: visible;
+  transition: color 600ms ease-in-out;
+}
+
+.film-edge-screen-overlay[data-active="true"]
+  .film-edge-screen-label[data-decoded="true"]
+  .film-edge-screen-hdr,
+.film-edge-screen-overlay[data-retained="true"]
+  .film-edge-screen-label[data-decoded="true"]
+  .film-edge-screen-hdr {
+  visibility: visible;
+}
+
+.film-edge-screen-overlay[data-active="true"]
+  .film-edge-screen-label[data-decoded="true"]
+  .film-edge-screen-vector {
+  color: rgb(255 198 37 / 18%);
+}
+
 .film-canvas[data-hdr-enabled="true"] {
   --film-edge-ink: #ffc625;
 }

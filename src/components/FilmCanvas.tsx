@@ -25,6 +25,7 @@ import {
 
 import FilmLoupe from "./FilmLoupe";
 import FilmBoardSurface from "./FilmBoardSurface";
+import FilmEdgeHdrOverlay from "./FilmEdgeHdrOverlay";
 import HdrToggle from "./HdrToggle";
 import HdrLightPanel from "./HdrLightPanel";
 import FloatingControls, { floatingControlSurface } from "./FloatingControls";
@@ -49,6 +50,7 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
   const detailIdsRef = useRef<ReadonlySet<number>>(new Set());
   const qualityChangedRef = useRef<() => void>(() => undefined);
   const sceneChangedRef = useRef<() => void>(() => undefined);
+  const edgeOverlayChangedRef = useRef<() => void>(() => undefined);
 
   useEffect(() => {
     const viewport = viewportRef.current!;
@@ -210,6 +212,7 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
         const y = Math.round(next.y * pixelRatio) / pixelRatio;
 
         content.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${next.scale})`;
+        edgeOverlayChangedRef.current();
         sceneChangedRef.current();
         queueDetailQuality();
         setScale(Math.round(next.scale * 100));
@@ -476,6 +479,12 @@ export default function FilmCanvas({ children }: { children: ReactNode }) {
             {children}
           </div>
         </div>
+        <FilmEdgeHdrOverlay
+          contentRef={contentRef}
+          sceneChangedRef={edgeOverlayChangedRef}
+          viewRef={viewRef}
+          viewportRef={viewportRef}
+        />
         <FloatingControls>
           <div
             aria-label={t("film.zoom")}

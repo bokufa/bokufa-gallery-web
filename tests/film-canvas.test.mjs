@@ -325,6 +325,12 @@ test("canvas gestures suppress drag clicks, preserve normal clicks, support pinc
         ),
       )
       .replace(
+        '"./FilmEdgeHdrOverlay"',
+        JSON.stringify(
+          dataUrl("export default function FilmEdgeHdrOverlay() { return null; }"),
+        ),
+      )
+      .replace(
         '"./HdrToggle"',
         JSON.stringify(
           dataUrl("export default function HdrToggle() { return null; }"),

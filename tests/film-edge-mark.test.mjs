@@ -10,6 +10,7 @@ import sharp from "sharp";
 import { splitGainmap, jpegHeaders } from "../scripts/jpeg-gainmap.mjs";
 
 const css = await readFile(new URL("../src/styles/globals.css", import.meta.url), "utf8");
+const overlay = await readFile(new URL("../src/components/FilmEdgeHdrOverlay.tsx", import.meta.url), "utf8");
 const dataUrl = source => `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
 const glyphCode = ts.transpileModule(await readFile(new URL('../src/utils/filmGlyphs.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
 const glyphUrl = dataUrl(glyphCode);
@@ -106,6 +107,20 @@ test('LED and photo layers fade while native HDR edge ink stays out of animated 
   assert(!css.slice(css.indexOf('.film-edge-label {')).split('}')[0].includes('isolation:'), 'the edge label must not force HDR and SVG into one offscreen group');
   assert.match(css, /\.film-edge-label\[data-edge-hdr-decoded="true"\] \.film-edge-hdr\s*\{\s*visibility:\s*visible/);
   assert(!css.includes('data-edge-hdr-settled'));
+});
+
+test('mobile edge HDR is mirrored outside the transformed film scene without layout reads during gestures', () => {
+  assert.match(overlay, /className="film-edge-screen-overlay"/);
+  assert.match(overlay, /FILM_EDGE_HDR_LABELS/);
+  assert.match(overlay, /worldLeft:/);
+  assert.match(overlay, /worldTop:/);
+  assert.match(overlay, /sceneChangedRef\.current = update/);
+  const update = overlay.slice(overlay.indexOf('const update = () => {'), overlay.indexOf('const clear = () => {'));
+  assert(!update.includes('getBoundingClientRect'), 'drag and pinch frames use cached world geometry');
+  assert.match(css, /\.film-edge-screen-overlay\s*\{[^}]*position:\s*absolute[^}]*z-index:\s*2/s);
+  assert.match(css, /data-edge-screen-managed="true"[\s\S]*> \.film-edge-hdr-layout[\s\S]*visibility:\s*hidden/);
+  assert.match(css, /\.film-edge-screen-vector\s*\{[^}]*transition:\s*color 600ms ease-in-out/s);
+  assert.match(css, /\.film-edge-screen-hdr\s*\{[^}]*dynamic-range-limit:\s*no-limit/s);
 });
 
 test('HDR atlas matches every glyph and contains compatible ISO plus legacy Adobe metadata', async () => {
