@@ -33,7 +33,9 @@ test("film page receives the LED table and the same floating chrome as the map",
   assert.match(filmPage, /preloadPhotoSource\(preview\.url, 0\)/);
   assert.match(filmPage, /useFilmVisibility\(frameRef\)/);
   assert.match(filmPage, /filmPreviewFile\(photo, hdrEnabled\)/);
-  assert.match(filmPage, /suspend=\{!visible \|\| compact\}/);
+  assert.match(filmPage, /suspend=\{!visible\}/);
+  assert(!filmPage.includes("visible && !compact"));
+  assert.match(filmPage, /if \(!visible\) \{\s*setPreviewUrl\(photo\.thumb_file\.url\)/);
   assert.match(filmPage, /!compact && detailSelected && detailFile/);
   assert(
     !filmPage.includes("visible && !compact && detailSelected"),

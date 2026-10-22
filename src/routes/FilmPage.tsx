@@ -136,7 +136,7 @@ function FilmFrame({
   const loupeFile = filmLoupeDetailFile(photo, hdrEnabled);
 
   useEffect(() => {
-    if (!visible || compact) {
+    if (!visible) {
       setPreviewUrl(photo.thumb_file.url);
 
       return;
@@ -165,7 +165,6 @@ function FilmFrame({
     photo.hdr_preview_file,
     photo.thumb_file.url,
     hdrEnabled,
-    compact,
     visible,
   ]);
 
@@ -196,11 +195,11 @@ function FilmFrame({
       {format === "135" ? <FilmStripBase portrait={portrait} /> : null}
       {format === "120" ? (
         <span aria-hidden="true" className="film-fuji-mark">
-          <FilmEdgeMark active={visible && !compact} text="FUJI" />
+          <FilmEdgeMark active={visible} text="FUJI" />
         </span>
       ) : null}
       <span aria-hidden="true" className="film-edge-copy film-edge-copy-start">
-        <FilmEdgeMark active={visible && !compact} text={edgeLabel} />
+        <FilmEdgeMark active={visible} text={edgeLabel} />
       </span>
       <span
         className={`photo-image-shell film-image-window ${imageLoaded ? "is-loaded" : ""}`}
@@ -222,7 +221,7 @@ function FilmFrame({
           hdrSrc={photo.hdr_preview_file?.url}
           loading="eager"
           src={previewUrl}
-          suspend={!visible || compact}
+          suspend={!visible}
           onLoad={() => {
             loadedFilmImageIds.add(photo.id);
             setImageLoaded(true);
@@ -236,7 +235,7 @@ function FilmFrame({
         ) : null}
       </span>
       <span aria-hidden="true" className="film-edge-copy film-edge-copy-end">
-        <FilmEdgeMark active={visible && !compact} text={`▶ ${edgeLabel}`} />
+        <FilmEdgeMark active={visible} text={`▶ ${edgeLabel}`} />
       </span>
     </button>
   );
